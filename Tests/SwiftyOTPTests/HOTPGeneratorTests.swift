@@ -1,5 +1,5 @@
 //
-//  HOTPTests.swift
+//  HOTPGeneratorTests.swift
 //  
 //
 //  Created by Lorenzo Limoli on 28/09/23.
@@ -8,9 +8,16 @@
 import XCTest
 @testable import SwiftyOTP
 
-final class HOTPTests: XCTestCase {
+final class HOTPGeneratorTests: XCTestCase {
+    
+    func test_otp_throwsDigitsOutBoundError() throws {
+        let seed = Seed.data(seedData)
+        XCTAssertThrowsError(try makeSUT(seed: seed, digits: 5))
+        XCTAssertThrowsError(try makeSUT(seed: seed, digits: 9))
+    }
+    
     // MARK: Test suite from RFC4226, Appendix D - https://tools.ietf.org/html/rfc4226#page-32
-    func test_otpFromHexSeed_generatesExpectedOTP() throws {
+    func test_otpAtCounter_generatesExpectedOTP() throws {
         let seed = Seed.data(seedData)
         let sut = try makeSUT(seed: seed)
         
@@ -26,7 +33,7 @@ final class HOTPTests: XCTestCase {
 }
 
 // MARK: Helepers
-private extension HOTPTests {
+private extension HOTPGeneratorTests {
     var seedData: Data{ "12345678901234567890".data(using: .ascii)! }
     
     var expectedOTPs: [String] {
@@ -44,7 +51,7 @@ private extension HOTPTests {
         ]
     }
     
-    func makeSUT(seed: Seed, digits: Int = 6, algo: HashingAlgorithm = .sha1) throws -> HOTP {
+    func makeSUT(seed: Seed, digits: Int = 6, algo: HashingAlgorithm = .sha1) throws -> HOTPGenerator {
         try .init(seed: seed, digits: digits, algorithm: algo)
     }
 }

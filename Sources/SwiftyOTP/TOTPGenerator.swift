@@ -1,5 +1,5 @@
 //
-//  TOTP.swift
+//  TOTPGenerator.swift
 //  SwiftyOTP
 //
 //  Created by Lorenzo Limoli on 28/09/23.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// Represents a Time-Based One-Time Password (HOTP) generator.
-public struct TOTP {
+public struct TOTPGenerator {
     static var currentDateProvider: () -> Date = Date.init
     
     /// The secret seed data used for generating OTPs.
@@ -23,7 +23,7 @@ public struct TOTP {
     /// The timestep for computing the OTP - usually 30 or 60 sec
     public let timeStep: UInt64
     
-    private let hotp: HOTP
+    private let hotp: HOTPGenerator
     
     /// Initializes a Time-Based OTP generator with the provided seed, number of digits, time step, and hashing algorithm.
     ///
@@ -37,7 +37,7 @@ public struct TOTP {
     ///   - `Error.invalidHex`: If the `seed` is not in correct hex representation
     ///   - `Error.invalidEncoding`: If the `seed` is not in correct base32 or base64 representation
     public init(seed: Seed, digits: Int = 6, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) throws {
-        self.hotp = try HOTP(seed: seed, digits: digits, algorithm: algorithm)
+        self.hotp = try HOTPGenerator(seed: seed, digits: digits, algorithm: algorithm)
         self.timeStep = timeStep
     }
     
@@ -54,7 +54,7 @@ public struct TOTP {
     }
 }
 
-public extension TOTP {
+public extension TOTPGenerator {
     enum UnixTimestamp {
         case seconds(UInt64)
         case milliseconds(UInt64)
@@ -74,7 +74,7 @@ public extension TOTP {
 }
 
 // MARK: Helpers
-private extension TOTP {
+private extension TOTPGenerator {
 
     func stepCounter(at date: Date) -> UInt64 {
         (date.timeIntervalSince1970.floor / timeStep.asDouble).floor.asUInt

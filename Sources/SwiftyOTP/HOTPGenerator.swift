@@ -1,5 +1,5 @@
 //
-//  HOTP.swift
+//  HOTPGenerator.swift
 //
 //
 //  Created by Lorenzo Limoli on 28/09/23.
@@ -9,7 +9,7 @@ import Foundation
 import CryptoKit
 
 /// Represents a Hash-Based One-Time Password (HOTP) generator.
-public struct HOTP {
+public struct HOTPGenerator {
     /// The secret seed data used for generating OTPs.
     public let seed: Data
     
