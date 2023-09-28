@@ -94,7 +94,7 @@ public extension TOTP {
         case seconds(UInt64)
         case milliseconds(UInt64)
         
-        fileprivate var timestampInSeconds: TimeInterval {
+        var timestampInSeconds: TimeInterval {
             switch self {
             case let .seconds(timestamp): TimeInterval(timestamp)
             case let .milliseconds(timestamp): TimeInterval(timestamp) / 1000
