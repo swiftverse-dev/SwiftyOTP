@@ -9,6 +9,8 @@ import Foundation
 import CryptoKit
 
 public struct TOTP {
+    static var defaultDate: () -> Date = Date.init
+    
     public let seed: Data
     public let digits: Int
     public let timeStep: UInt64
@@ -19,6 +21,10 @@ public struct TOTP {
         self.digits = Int(digits)
         self.timeStep = timeStep
         self.algorithm = algorithm
+    }
+    
+    public var currentOTP: String {
+        otp(at: Self.defaultDate())
     }
     
     public func otp(at date: Date) -> String {
@@ -42,6 +48,24 @@ public struct TOTP {
             otp = padding + otp
         }
         return otp
+    }
+}
+
+public extension TOTP {
+    enum UnixTimestamp {
+        case seconds(UInt64)
+        case milliseconds(UInt64)
+        
+        fileprivate var timestampInSeconds: TimeInterval {
+            switch self {
+            case let .seconds(timestamp): TimeInterval(timestamp)
+            case let .milliseconds(timestamp): TimeInterval(timestamp) / 1000
+            }
+        }
+    }
+    
+    func otp(unixTimestamp timestamp: UnixTimestamp) -> String {
+        otp(at: Date(timeIntervalSince1970: timestamp.timestampInSeconds))
     }
 }
 
