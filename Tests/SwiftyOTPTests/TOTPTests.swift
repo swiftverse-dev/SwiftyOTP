@@ -1,7 +1,6 @@
 import XCTest
 @testable import SwiftyOTP
 
-
 final class TOTPTests: XCTestCase {
 
     let dataSHA1 = "12345678901234567890".data(using: .ascii)!
@@ -12,6 +11,18 @@ final class TOTPTests: XCTestCase {
     func test_otp_throwsDigitsOutBoundError() throws {
         XCTAssertThrowsError(try makeSUT(seed: dataSHA1, digits: 5))
         XCTAssertThrowsError(try makeSUT(seed: dataSHA1, digits: 9))
+    }
+    
+    func test_currentOTP_generateExpectedOTP() throws {
+        TOTP.currentDateProvider = { Date(timeIntervalSince1970: 59) }
+        
+        let sutSHA1 = try makeSUT(seed: dataSHA1, algo: .sha1)
+        let sutSHA256 = try makeSUT(seed: dataSHA256, algo: .sha256)
+        let sutSHA512 = try makeSUT(seed: dataSHA512, algo: .sha512)
+
+        XCTAssertEqual(sutSHA1.currentOTP, "94287082")
+        XCTAssertEqual(sutSHA256.currentOTP, "46119246")
+        XCTAssertEqual(sutSHA512.currentOTP, "90693936")
     }
     
     // MARK: Test cases taken from https://datatracker.ietf.org/doc/html/rfc6238#appendix-B

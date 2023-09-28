@@ -9,7 +9,7 @@ import Foundation
 import CryptoKit
 
 public struct TOTP {
-    static var defaultDate: () -> Date = Date.init
+    static var currentDateProvider: () -> Date = Date.init
     
     public let seed: Data
     public let digits: Int
@@ -61,7 +61,7 @@ public struct TOTP {
     
     /// The current One-Time Password (OTP) for the current time.
     public var currentOTP: String {
-        otp(at: Self.defaultDate())
+        otp(at: Self.currentDateProvider())
     }
 
     /// Generate the One-Time Password (OTP) for the provided Date.
