@@ -25,18 +25,6 @@ public struct TOTP {
     
     private let hotp: HOTP
     
-    /// Initializes a Time-Based OTP generator of 6 digits with the provided seed, time step, and hashing algorithm.
-    ///
-    /// - Parameters:
-    ///   - seed: The secret seed data used for generating OTPs.
-    ///   - timeStep: The time step duration in seconds. The default is 30 seconds.
-    ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
-    public init(seed: Data, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) {
-        self.hotp = HOTP(seed: seed, algorithm: algorithm)
-        self.timeStep = timeStep
-    }
-
-    
     /// Initializes a Time-Based OTP generator with the provided seed, number of digits, time step, and hashing algorithm.
     ///
     /// - Parameters:
@@ -46,7 +34,9 @@ public struct TOTP {
     ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
     /// - Throws:
     ///   - `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
-    public init(seed: Data, digits: Int, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) throws {
+    ///   - `Error.invalidHex`: If the `seed` is not in correct hex representation
+    ///   - `Error.invalidEncoding`: If the `seed` is not in correct base32 or base64 representation
+    public init(seed: Seed, digits: Int = 6, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) throws {
         self.hotp = try HOTP(seed: seed, digits: digits, algorithm: algorithm)
         self.timeStep = timeStep
     }

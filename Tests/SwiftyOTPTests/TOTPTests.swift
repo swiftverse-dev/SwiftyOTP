@@ -25,6 +25,18 @@ final class TOTPTests: XCTestCase {
         XCTAssertEqual(sutSHA512.currentOTP, "90693936")
     }
     
+    func test_otpFromHexSeed_generateExpectedOTP() throws {
+        TOTP.currentDateProvider = { Date(timeIntervalSince1970: 59) }
+        
+        let sutSHA1 = try makeSUT(seed: dataSHA1, algo: .sha1)
+        let sutSHA256 = try makeSUT(seed: dataSHA256, algo: .sha256)
+        let sutSHA512 = try makeSUT(seed: dataSHA512, algo: .sha512)
+
+        XCTAssertEqual(sutSHA1.currentOTP, "94287082")
+        XCTAssertEqual(sutSHA256.currentOTP, "46119246")
+        XCTAssertEqual(sutSHA512.currentOTP, "90693936")
+    }
+    
     // MARK: Test cases taken from https://datatracker.ietf.org/doc/html/rfc6238#appendix-B
     func test_otpSHA1_generateTheExpectedOTP() throws {
         let sut = try makeSUT(seed: dataSHA1, algo: .sha1)
@@ -71,8 +83,9 @@ final class TOTPTests: XCTestCase {
 
 // MARK: HELPERS
 private extension TOTPTests {
+    
     func makeSUT(seed: Data, timeStep: UInt64 = 30, digits: Int = 8, algo: HashingAlgorithm = .sha1) throws -> TOTP {
-        try .init(seed: seed, digits: digits, timeStep: timeStep, algorithm: algo)
+        try .init(seed: .data(seed), digits: digits, timeStep: timeStep, algorithm: algo)
     }
     
     func assert(_ sut: TOTP, tests suite: [(timestamp: UInt64, otp: String)], file: StaticString = #filePath, line: UInt = #line) {

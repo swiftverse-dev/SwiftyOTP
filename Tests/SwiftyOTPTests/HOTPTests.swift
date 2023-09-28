@@ -38,6 +38,6 @@ final class HOTPTests: XCTestCase {
 // MARK: Helepers
 private extension HOTPTests {
     func makeSUT(seed: Data, digits: Int = 6, algo: HashingAlgorithm = .sha1) throws -> HOTP {
-        try .init(seed: seed, digits: digits, algorithm: algo)
+        try .init(seed: .data(seed), digits: digits, algorithm: algo)
     }
 }

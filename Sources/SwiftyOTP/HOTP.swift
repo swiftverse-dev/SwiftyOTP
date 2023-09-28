@@ -38,9 +38,11 @@ public struct HOTP {
     ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
     /// - Throws:
     ///   - `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
-    public init(seed: Data, digits: Int = 6, algorithm: HashingAlgorithm = .sha1) throws {
+    ///   - `Error.invalidHex`: If the `seed` is not in correct hex representation
+    ///   - `Error.invalidEncoding`: If the `seed` is not in correct base32 or base64 representation
+    public init(seed: Seed, digits: Int = 6, algorithm: HashingAlgorithm = .sha1) throws {
         try OTPDigitsChecker.check(digits)
-        self.seed = seed
+        self.seed = try seed.data()
         self.digits = digits
         self.algorithm = algorithm
     }
