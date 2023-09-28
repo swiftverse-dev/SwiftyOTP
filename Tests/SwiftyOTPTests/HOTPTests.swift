@@ -12,7 +12,7 @@ final class HOTPTests: XCTestCase {
     
     // MARK: Test suite from RFC4226, Appendix D - https://tools.ietf.org/html/rfc4226#page-32
     func test_otpAtCounter_generatesExpectedOTP() throws {
-        let seed = Data(hexString: "3132333435363738393031323334353637383930")!
+        let seed = Data(hexString: "3132333435363738393031323334353637383930")
         let expectedOTPs = [
             "755224",
             "287082",

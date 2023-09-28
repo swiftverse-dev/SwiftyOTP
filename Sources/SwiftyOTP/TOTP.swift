@@ -7,13 +7,23 @@
 
 import Foundation
 
+/// Represents a Time-Based One-Time Password (HOTP) generator.
 public struct TOTP {
     static var currentDateProvider: () -> Date = Date.init
     
-    public let seed: Data
-    public let digits: Int
+    /// The secret seed data used for generating OTPs.
+    public var seed: Data { hotp.seed }
+    
+    /// The number of digits in the generated OTP.
+    public var digits: Int { hotp.digits }
+    
+    /// The hashing algorithm used for OTP generation.
+    public var algorithm: HashingAlgorithm { hotp.algorithm }
+    
+    /// The timestep for computing the OTP - usually 30 or 60 sec
     public let timeStep: UInt64
-    public let algorithm: HashingAlgorithm
+    
+    private let hotp: HOTP
     
     /// Initializes a Time-Based OTP generator of 6 digits with the provided seed, time step, and hashing algorithm.
     ///
@@ -22,10 +32,8 @@ public struct TOTP {
     ///   - timeStep: The time step duration in seconds. The default is 30 seconds.
     ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
     public init(seed: Data, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) {
-        self.seed = seed
-        self.digits = 6
+        self.hotp = HOTP(seed: seed, algorithm: algorithm)
         self.timeStep = timeStep
-        self.algorithm = algorithm
     }
 
     
@@ -39,11 +47,8 @@ public struct TOTP {
     /// - Throws:
     ///   - `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
     public init(seed: Data, digits: Int, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) throws {
-        try OTPGenerator.check(digits)
-        self.seed = seed
-        self.digits = Int(digits)
+        self.hotp = try HOTP(seed: seed, digits: digits, algorithm: algorithm)
         self.timeStep = timeStep
-        self.algorithm = algorithm
     }
     
     
@@ -55,8 +60,7 @@ public struct TOTP {
     /// Generate the One-Time Password (OTP) for the provided Date.
     public func otp(at date: Date) -> String {
         let stepCounter = stepCounter(at: date)
-        return OTPGenerator(seed: seed, digits: digits, algorithm: algorithm)
-            .otp(at: stepCounter)
+        return hotp.otp(at: stepCounter)
     }
 }
 
