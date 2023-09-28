@@ -27,8 +27,9 @@ extension Data {
         return Array(self)
     }
 
-    public init(hexString: String) {
-        self.init(Array<UInt8>(hexString: hexString))
+    public init?(hexString: String) {
+        guard let bytes = Array<UInt8>(hexString: hexString) else { return nil }
+        self.init(bytes)
     }
 }
 
@@ -39,7 +40,7 @@ extension Array where Element == UInt8 {
       self.reserveCapacity(reserveCapacity)
     }
 
-    public init(hexString: String) {
+    public init?(hexString: String) {
         self.init(reserveCapacity: hexString.unicodeScalars.lazy.underestimatedCount)
         var buffer: UInt8?
         var skip = hexString.hasPrefix("0x") ? 2 : 0
@@ -51,7 +52,7 @@ extension Array where Element == UInt8 {
 
             guard char.value >= 48 && char.value <= 102 else {
                 removeAll()
-                return
+                return nil
             }
             let v: UInt8
             let c: UInt8 = UInt8(char.value)
@@ -65,7 +66,7 @@ extension Array where Element == UInt8 {
               v = c - 87
             default:
               removeAll()
-              return
+              return nil
             }
 
             if let b = buffer {

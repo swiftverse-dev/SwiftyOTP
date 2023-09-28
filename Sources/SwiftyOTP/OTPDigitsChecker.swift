@@ -10,18 +10,19 @@ import CryptoKit
 
 enum OTPDigitsChecker {
     
-    private enum Error: Swift.Error {
-        case digitsNumberOutOfBounds(Int)
+    private struct DigitsNumberOutOfBounds: Swift.Error {
+        let digits: Int
+        
+        init(_ digits: Int) {
+            self.digits = digits
+        }
         
         var description: String {
-            let digits = switch self{
-            case .digitsNumberOutOfBounds(let n): n
-            }
-            return "Expected digits number in (6...8) interval. Got \(digits)"
+            "Expected digits number in (6...8) interval. Got \(digits)"
         }
     }
     
     static func check(_ digits: Int) throws {
-        guard (6...8) ~= digits else { throw Error.digitsNumberOutOfBounds(digits)}
+        guard (6...8) ~= digits else { throw DigitsNumberOutOfBounds(digits)}
     }
 }

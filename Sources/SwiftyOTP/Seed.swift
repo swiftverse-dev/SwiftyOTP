@@ -22,16 +22,9 @@ public enum Seed {
     /// A secret seed provided as raw binary data.
     case data(Data)
     
-    private enum DecodingError: Error {
-        case invalidEncoding(message: String)
-        case invalidHex(String)
-        
-        var description: String {
-            switch self {
-            case let .invalidEncoding(message): message
-            case let .invalidHex(hex): "Invalid Hex representation: \(hex)"
-            }
-        }
+    private struct SeedDecodingError: Error {
+        let message: String
+        var description: String { message }
     }
     
     func data() throws -> Data {
@@ -41,18 +34,21 @@ public enum Seed {
             
         case .base32(let base32):
             guard let data = base32.base32DecodedData else {
-                throw DecodingError.invalidEncoding(message: "Invalid base32 representation: \(base32)")
+                throw SeedDecodingError(message: "Invalid base32 representation: \(base32)")
             }
             return data
             
         case .base64(let base64):
             guard let data = Data(base64Encoded: base64) else {
-                throw DecodingError.invalidEncoding(message: "Invalid base64 representation: \(base64)")
+                throw SeedDecodingError(message: "Invalid base64 representation: \(base64)")
             }
             return data
             
         case .hex(let hexString):
-            return Data(hexString: hexString)
+            guard let data = Data(hexString: hexString) else {
+                throw SeedDecodingError(message: "Invalid hex representation: \(hexString)")
+            }
+            return data
         }
     }
 }

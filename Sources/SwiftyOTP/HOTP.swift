@@ -19,16 +19,6 @@ public struct HOTP {
     /// The hashing algorithm used for OTP generation.
     public let algorithm: HashingAlgorithm
     
-    /// Initializes an HOTP generator of 6 digits with the provided seed and optional algorithm.
-    ///
-    /// - Parameters:
-    ///   - seed: The secret seed data used for generating OTPs.
-    ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
-    public init(seed: Data, algorithm: HashingAlgorithm = .sha1) {
-        self.seed = seed
-        self.digits = 6
-        self.algorithm = algorithm
-    }
     
     /// Initializes an HOTP generator with the provided seed, number of digits, and optional algorithm.
     ///
