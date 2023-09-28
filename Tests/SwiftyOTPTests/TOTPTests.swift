@@ -1,12 +1,13 @@
 import XCTest
 @testable import SwiftyOTP
 
-class SwiftyOTPTests: XCTestCase {
+final class TOTPTests: XCTestCase {
 
     let dataSHA1 = "12345678901234567890".data(using: String.Encoding.ascii)!
     let dataSHA256 = "12345678901234567890123456789012".data(using: String.Encoding.ascii)!
     let dataSHA512 = "1234567890123456789012345678901234567890123456789012345678901234".data(using: String.Encoding.ascii)!
 
+    // Test cases taken from https://datatracker.ietf.org/doc/html/rfc6238#appendix-B
     func test01() {
         let sut = makeSUT(seed: dataSHA1, algo: .sha1)
         XCTAssertEqual(sut.otp(at: .init(timeIntervalSince1970: 59)), "94287082")
@@ -100,8 +101,7 @@ class SwiftyOTPTests: XCTestCase {
 }
 
 // MARK: HELPERS
-extension SwiftyOTPTests {
-    
+extension TOTPTests {
     func makeSUT(seed: Data, timeStep: UInt64 = 30, digits: UInt8 = 8, algo: HashingAlgorithm = .sha1) -> TOTP {
         .init(seed: seed, digits: digits, timeStep: timeStep, algorithm: algo)
     }
