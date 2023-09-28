@@ -1,5 +1,5 @@
 //
-//  UInt64+AsDouble.swift
+//  Numbers+Utils.swift
 //  SwiftyOTP
 //
 //  Created by Lorenzo Limoli on 28/09/23.
@@ -13,6 +13,7 @@ extension UInt64 {
 
 extension Double {
     var asUInt: UInt64 { UInt64(self) }
+    var floor: Double { Darwin.floor(self) }
 }
 
 extension Float {

@@ -16,7 +16,19 @@ public struct TOTP {
     public let timeStep: UInt64
     public let algorithm: HashingAlgorithm
     
-    public init(seed: Data, digits: UInt8 = 6, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) {
+    private enum Error: Swift.Error {
+        case digitsNumberOutOfBounds(Int)
+        
+        var description: String {
+            let digits = switch self{
+            case .digitsNumberOutOfBounds(let n): n
+            }
+            return "Expected digits number in [6,8] interval. Got \(digits)"
+        }
+    }
+    
+    public init(seed: Data, digits: Int = 6, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) throws {
+        guard Self.isDigitsNumberValid(digits) else { throw Error.digitsNumberOutOfBounds(digits) }
         self.seed = seed
         self.digits = Int(digits)
         self.timeStep = timeStep
@@ -28,9 +40,8 @@ public struct TOTP {
     }
     
     public func otp(at date: Date) -> String {
-        
-        let stepNumber = floor(date.timeIntervalSince1970 / timeStep.asDouble).asUInt
-        let counterMessage = stepNumber.bigEndian.data
+        let stepCounter = stepCounter(at: date)
+        let counterMessage = stepCounter.bigEndian.data
         
         let hmac = algorithm.hmac(for: counterMessage, using: seed)
         
@@ -47,6 +58,7 @@ public struct TOTP {
             let padding = (0..<(digits - otp.count)).map{ _ in "0" }.joined()
             otp = padding + otp
         }
+        
         return otp
     }
 }
@@ -66,6 +78,18 @@ public extension TOTP {
     
     func otp(unixTimestamp timestamp: UnixTimestamp) -> String {
         otp(at: Date(timeIntervalSince1970: timestamp.timestampInSeconds))
+    }
+}
+
+// Helpers
+private extension TOTP {
+    
+    static func isDigitsNumberValid(_ digits: Int) -> Bool {
+        (6...8) ~= digits
+    }
+    
+    func stepCounter(at date: Date) -> UInt64 {
+        (date.timeIntervalSince1970.floor / timeStep.asDouble).floor.asUInt
     }
 }
 
