@@ -8,6 +8,12 @@ final class TOTPTests: XCTestCase {
     let dataSHA256 = "12345678901234567890123456789012".data(using: String.Encoding.ascii)!
     let dataSHA512 = "1234567890123456789012345678901234567890123456789012345678901234".data(using: String.Encoding.ascii)!
     
+    
+    func test_otp_throwsDigitsOutBoundError() throws {
+        XCTAssertThrowsError(try makeSUT(seed: dataSHA1, digits: 5))
+        XCTAssertThrowsError(try makeSUT(seed: dataSHA1, digits: 9))
+    }
+    
     // MARK: Test cases taken from https://datatracker.ietf.org/doc/html/rfc6238#appendix-B
     func test_otpSHA1_generateTheExpectedOTP() throws {
         let sut = try makeSUT(seed: dataSHA1, algo: .sha1)
