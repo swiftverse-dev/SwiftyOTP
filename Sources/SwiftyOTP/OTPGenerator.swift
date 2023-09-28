@@ -13,7 +13,22 @@ struct OTPGenerator {
     let digits: Int
     let algorithm: HashingAlgorithm
     
-    func otp(for stepCounter: UInt64) -> String {
+    private enum Error: Swift.Error {
+        case digitsNumberOutOfBounds(Int)
+        
+        var description: String {
+            let digits = switch self{
+            case .digitsNumberOutOfBounds(let n): n
+            }
+            return "Expected digits number in (6...8) interval. Got \(digits)"
+        }
+    }
+    
+    static func check(_ digits: Int) throws {
+        guard (6...8) ~= digits else { throw Error.digitsNumberOutOfBounds(digits)}
+    }
+    
+    func otp(at stepCounter: UInt64) -> String {
         let message = stepCounter.bigEndian.data
         let hmac = algorithm.hmac(for: message, using: seed)
         

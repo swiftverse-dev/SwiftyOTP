@@ -15,17 +15,6 @@ public struct TOTP {
     public let timeStep: UInt64
     public let algorithm: HashingAlgorithm
     
-    private enum Error: Swift.Error {
-        case digitsNumberOutOfBounds(Int)
-        
-        var description: String {
-            let digits = switch self{
-            case .digitsNumberOutOfBounds(let n): n
-            }
-            return "Expected digits number in (6...8) interval. Got \(digits)"
-        }
-    }
-    
     /// Initializes a Time-Based OTP generator of 6 digits with the provided seed, time step, and hashing algorithm.
     ///
     /// - Parameters:
@@ -50,7 +39,7 @@ public struct TOTP {
     /// - Throws:
     ///   - `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
     public init(seed: Data, digits: Int, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) throws {
-        guard Self.isDigitsNumberValid(digits) else { throw Error.digitsNumberOutOfBounds(digits) }
+        try OTPGenerator.check(digits)
         self.seed = seed
         self.digits = Int(digits)
         self.timeStep = timeStep
@@ -67,7 +56,7 @@ public struct TOTP {
     public func otp(at date: Date) -> String {
         let stepCounter = stepCounter(at: date)
         return OTPGenerator(seed: seed, digits: digits, algorithm: algorithm)
-            .otp(for: stepCounter)
+            .otp(at: stepCounter)
     }
 }
 
@@ -92,8 +81,7 @@ public extension TOTP {
 
 // MARK: Helpers
 private extension TOTP {
-    static func isDigitsNumberValid(_ digits: Int) -> Bool { (6...8) ~= digits }
-    
+
     func stepCounter(at date: Date) -> UInt64 {
         (date.timeIntervalSince1970.floor / timeStep.asDouble).floor.asUInt
     }
