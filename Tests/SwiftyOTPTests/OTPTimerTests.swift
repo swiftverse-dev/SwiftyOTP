@@ -9,7 +9,7 @@ import XCTest
 import Combine
 @testable import SwiftyOTP
 
-public protocol OTPProvider {
+public protocol TOTPProvider {
     typealias OTP = String
     var timeStep: UInt { get }
     func otp(intervalSince1970: TimeInterval) -> OTP
@@ -26,7 +26,7 @@ public final class OTPTimer {
     
     public let publisher: Publisher
     
-    public init(startingDate: Date = .init(), interval: TimeInterval = 1.0, otpProvider: OTPProvider) {
+    public init(startingDate: Date = .init(), interval: TimeInterval = 1.0, otpProvider: TOTPProvider) {
         self.publisher = Self.timer(every: interval, startingFrom: startingDate, otpProvider: otpProvider)
     }
     
@@ -35,7 +35,7 @@ public final class OTPTimer {
 extension OTPTimer {
     internal static var incrementTimestamp: (_ timestamp: Countdown, _ interval: Countdown) -> Countdown = { $0 + $1 }
     
-    private static func timer(every interval: TimeInterval, startingFrom date: Date, otpProvider: OTPProvider) -> Publisher {
+    private static func timer(every interval: TimeInterval, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
         let timestamp = date.timeIntervalSince1970
         var firstCountDown = true
         return Timer.publish(every: interval, on: .current, in: .default)
@@ -45,7 +45,7 @@ extension OTPTimer {
             .eraseToAnyPublisher()
     }
     
-    private static func convertToEvent(_ timestamp: Countdown, firstCountDown: inout Bool, otpProvider: OTPProvider) -> Event {
+    private static func convertToEvent(_ timestamp: Countdown, firstCountDown: inout Bool, otpProvider: TOTPProvider) -> Event {
         let timeStep = otpProvider.timeStep.asDouble
         let countdown = timeStep - (timestamp.truncatingRemainder(dividingBy: timeStep))
         if timeStep - countdown < 0.001 || firstCountDown {
@@ -95,7 +95,7 @@ extension OTPTimerTests {
     private func makeSUT(
         date: Date,
         interval: TimeInterval = 1.0,
-        otpProvider: @escaping (TimeInterval) -> OTPProvider.OTP = { _ in "111 111" },
+        otpProvider: @escaping (TimeInterval) -> TOTPProvider.OTP = { _ in "111 111" },
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: OTPTimer, spy: OTPProviderSpy) {
@@ -126,11 +126,11 @@ extension OTPTimerTests {
         cancellables.removeAll()
     }
     
-    private struct OTPProviderSpy: OTPProvider {
-        private let otpProvider: (TimeInterval) -> OTPProvider.OTP
+    private struct OTPProviderSpy: TOTPProvider {
+        private let otpProvider: (TimeInterval) -> TOTPProvider.OTP
         let timeStep: UInt
         
-        init(timeStep: UInt = 30, otpProvider: @escaping (TimeInterval) -> OTPProvider.OTP) {
+        init(timeStep: UInt = 30, otpProvider: @escaping (TimeInterval) -> TOTPProvider.OTP) {
             self.otpProvider = otpProvider
             self.timeStep = timeStep
         }
