@@ -17,12 +17,12 @@ public protocol OTPProvider {
 }
 
 public final class OTPTimer {
-    public typealias CountDown = TimeInterval
+    public typealias Countdown = TimeInterval
     public typealias Publisher = AnyPublisher<Event, Never>
     
     public enum Event: Equatable {
-        case countDown(CountDown)
-        case otpChanged(otp: String, countDown: CountDown)
+        case countdown(Countdown)
+        case otpChanged(otp: String, countdown: Countdown)
     }
     
     public let publisher: Publisher
@@ -41,15 +41,15 @@ public final class OTPTimer {
             .eraseToAnyPublisher()
     }
     
-    private static func convertToEvent(_ timestamp: CountDown, firstCountDown: inout Bool, otpProvider: OTPProvider) -> Event {
+    private static func convertToEvent(_ timestamp: Countdown, firstCountDown: inout Bool, otpProvider: OTPProvider) -> Event {
         let countdown = 30 - (timestamp.truncatingRemainder(dividingBy: 30))
         if countdown == 30 || firstCountDown {
             firstCountDown = false
             let otp = otpProvider.otp(intervalSince1970: timestamp)
-            return Event.otpChanged(otp: otp, countDown: countdown)
+            return Event.otpChanged(otp: otp, countdown: countdown)
         }
         else {
-            return Event.countDown(countdown)
+            return Event.countdown(countdown)
         }
     }
 }
@@ -64,7 +64,7 @@ final class OTPTimerTests: XCTestCase {
     }
 
     func test_publisher_publishOTPChangedEventAsFirstEvent() {
-        let expectedOTP = "111111"
+        let expectedOTP = "111 111"
         let (sut, _) = makeSUT(
             date: Date(timeIntervalSince1970: 3),
             interval: 0,
@@ -72,16 +72,37 @@ final class OTPTimerTests: XCTestCase {
         )
         
         let exp = expectation(description: "waiting for event")
-        var receivedEvent = [OTPTimer.Event]()
+        var receivedEvents = [OTPTimer.Event]()
         sut.publisher.sink{ [weak self] event in
-            receivedEvent.append(event)
+            receivedEvents.append(event)
             self?.clearCancellables()
             exp.fulfill()
         }.store(in: &cancellables)
 
         wait(for: [exp], timeout: 0.01)
         
-        XCTAssertEqual(receivedEvent, [.otpChanged(otp: expectedOTP, countDown: 27.0)])
+        XCTAssertEqual(receivedEvents, [.otpChanged(otp: expectedOTP, countdown: 27.0)])
+    }
+    
+    func test_publisher_publishCountDownEventAfterTheFirstAndWhenCountdownIsNot30() {
+        let (sut, _) = makeSUT(
+            date: Date(timeIntervalSince1970: 3),
+            interval: 0
+        )
+        
+        let exp = expectation(description: "waiting for event")
+        var receivedEvents = [OTPTimer.Event]()
+        sut.publisher
+            .dropFirst()
+            .sink{ [weak self] event in
+                receivedEvents.append(event)
+                self?.clearCancellables()
+                exp.fulfill()
+            }.store(in: &cancellables)
+
+        wait(for: [exp], timeout: 0.01)
+        
+        XCTAssertEqual(receivedEvents, [.countdown(27.0)])
     }
 
 }
@@ -90,7 +111,7 @@ extension OTPTimerTests {
     private func makeSUT(
         date: Date,
         interval: TimeInterval = 1.0,
-        otpProvider: @escaping (TimeInterval) -> OTPProvider.OTP,
+        otpProvider: @escaping (TimeInterval) -> OTPProvider.OTP = { _ in "111 111" },
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (sut: OTPTimer, spy: OTPProviderSpy) {
