@@ -7,7 +7,7 @@
 
 import Foundation
 
-extension UInt64 {
+extension UInt {
     var asDouble: Double { Double(self) }
 }
 

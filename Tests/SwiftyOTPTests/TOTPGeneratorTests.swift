@@ -71,7 +71,7 @@ private extension TOTPGeneratorTests {
     var seedSha256: Data{ "12345678901234567890123456789012".data(using: .ascii)! }
     var seedSha512: Data{ "1234567890123456789012345678901234567890123456789012345678901234".data(using: .ascii)! }
     
-    func makeSUT(seed: Data, timeStep: UInt64 = 30, digits: Int = 8, algo: HashingAlgorithm = .sha1) throws -> TOTPGenerator {
+    func makeSUT(seed: Data, timeStep: UInt = 30, digits: Int = 8, algo: HashingAlgorithm = .sha1) throws -> TOTPGenerator {
         try .init(seed: .data(seed), digits: digits, timeStep: timeStep, algorithm: algo)
     }
     

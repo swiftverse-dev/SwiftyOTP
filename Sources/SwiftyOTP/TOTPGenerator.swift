@@ -21,7 +21,7 @@ public struct TOTPGenerator {
     public var algorithm: HashingAlgorithm { hotp.algorithm }
     
     /// The timestep for computing the OTP - usually 30 or 60 sec
-    public let timeStep: UInt64
+    public let timeStep: UInt
     
     private let hotp: HOTPGenerator
     
@@ -36,7 +36,7 @@ public struct TOTPGenerator {
     ///   - `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
     ///   - `Error.invalidHex`: If the `seed` is not in correct hex representation
     ///   - `Error.invalidEncoding`: If the `seed` is not in correct base32 or base64 representation
-    public init(seed: Seed, digits: Int = 6, timeStep: UInt64 = 30, algorithm: HashingAlgorithm = .sha1) throws {
+    public init(seed: Seed, digits: Int = 6, timeStep: UInt = 30, algorithm: HashingAlgorithm = .sha1) throws {
         self.hotp = try HOTPGenerator(seed: seed, digits: digits, algorithm: algorithm)
         self.timeStep = timeStep
     }
