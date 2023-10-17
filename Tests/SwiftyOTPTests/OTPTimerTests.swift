@@ -9,8 +9,6 @@ import XCTest
 import Combine
 import SwiftyOTP
 
-extension TOTPGenerator: OTPProvider {}
-
 public protocol OTPProvider {
     typealias OTP = String
     func otp(intervalSince1970: TimeInterval) -> OTP
@@ -71,17 +69,7 @@ final class OTPTimerTests: XCTestCase {
             otpProvider: { _ in expectedOTP }
         )
         
-        let exp = expectation(description: "waiting for event")
-        var receivedEvents = [OTPTimer.Event]()
-        sut.publisher.sink{ [weak self] event in
-            receivedEvents.append(event)
-            self?.clearCancellables()
-            exp.fulfill()
-        }.store(in: &cancellables)
-
-        wait(for: [exp], timeout: 0.01)
-        
-        XCTAssertEqual(receivedEvents, [.otpChanged(otp: expectedOTP, countdown: 27.0)])
+        expect(sut.publisher, toCatch: [.otpChanged(otp: expectedOTP, countdown: 27.0)])
     }
     
     func test_publisher_publishCountDownEventAfterTheFirstAndWhenCountdownIsNot30() {
@@ -90,19 +78,7 @@ final class OTPTimerTests: XCTestCase {
             interval: 0
         )
         
-        let exp = expectation(description: "waiting for event")
-        var receivedEvents = [OTPTimer.Event]()
-        sut.publisher
-            .dropFirst()
-            .sink{ [weak self] event in
-                receivedEvents.append(event)
-                self?.clearCancellables()
-                exp.fulfill()
-            }.store(in: &cancellables)
-
-        wait(for: [exp], timeout: 0.01)
-        
-        XCTAssertEqual(receivedEvents, [.countdown(27.0)])
+        expect(sut.publisher.dropFirst(), toCatch: [.countdown(27.0)])
     }
 
 }
@@ -119,6 +95,23 @@ extension OTPTimerTests {
         let sut = OTPTimer(startingDate: date, interval: interval, otpProvider: spy)
         trackForMemoryLeaks(sut, file: file, line: line)
         return (sut, spy)
+    }
+    
+    private func expect(_ publisher: some Publisher<OTPTimer.Event, Never>, toCatch expectedEvents: [OTPTimer.Event], file: StaticString = #filePath, line: UInt = #line) {
+        let exp = expectation(description: "waiting for event")
+        exp.expectedFulfillmentCount = expectedEvents.count
+        
+        var receivedEvents = [OTPTimer.Event]()
+        
+        publisher.sink{ [weak self] event in
+            receivedEvents.append(event)
+            exp.fulfill()
+            if receivedEvents.count == expectedEvents.count { self?.clearCancellables() }
+        }.store(in: &cancellables)
+
+        wait(for: [exp], timeout: 0.01)
+        
+        XCTAssertEqual(receivedEvents, expectedEvents, file: file, line: line)
     }
     
     private func clearCancellables() {
