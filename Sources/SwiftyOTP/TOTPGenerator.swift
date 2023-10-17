@@ -71,6 +71,11 @@ public extension TOTPGenerator {
     func otp(unixTimestamp timestamp: UnixTimestamp) -> String {
         otp(at: Date(timeIntervalSince1970: timestamp.timestampInSeconds))
     }
+    
+    /// The One-Time Password (OTP) for the provided TimeInterval
+    func otp(intervalSince1970: TimeInterval) -> String {
+        otp(at: Date(timeIntervalSince1970: intervalSince1970))
+    }
 }
 
 // MARK: Helpers

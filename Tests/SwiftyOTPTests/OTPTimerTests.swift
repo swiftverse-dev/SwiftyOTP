@@ -7,9 +7,16 @@
 
 import XCTest
 import Combine
+import SwiftyOTP
+
+extension TOTPGenerator: OTPProvider {}
+
+public protocol OTPProvider {
+    typealias OTP = String
+    func otp(intervalSince1970: TimeInterval) -> OTP
+}
 
 public final class OTPTimer {
-    public typealias OTP = String
     public typealias CountDown = TimeInterval
     public typealias Publisher = AnyPublisher<Event, Never>
     
@@ -20,29 +27,31 @@ public final class OTPTimer {
     
     public let publisher: Publisher
     
-    public init(startingDate: Date = .init(), interval: TimeInterval = 1.0) {
-        self.publisher = Self.timer(every: interval, startingFrom: startingDate)
+    public init(startingDate: Date = .init(), interval: TimeInterval = 1.0, otpProvider: OTPProvider) {
+        self.publisher = Self.timer(every: interval, startingFrom: startingDate, otpProvider: otpProvider)
     }
     
-    private static func timer(every interval: TimeInterval, startingFrom date: Date) -> Publisher {
+    private static func timer(every interval: TimeInterval, startingFrom date: Date, otpProvider: OTPProvider) -> Publisher {
         let timestamp = date.timeIntervalSince1970
         var firstCountDown = true
         return Timer.publish(every: interval, on: .current, in: .default)
             .autoconnect()
             .scan(timestamp) { timestamp, _ in timestamp + interval }
-            .map{ timestamp in
-                let countdown = 30 - (timestamp.truncatingRemainder(dividingBy: 30))
-                if countdown == 30 || firstCountDown {
-                    firstCountDown = false
-                    return Event.otpChanged(otp: "123456", countDown: countdown)
-                }
-                else {
-                    return Event.countDown(countdown)
-                }
-            }
+            .map{ convertToEvent($0, firstCountDown: &firstCountDown, otpProvider: otpProvider) }
             .eraseToAnyPublisher()
     }
     
+    private static func convertToEvent(_ timestamp: CountDown, firstCountDown: inout Bool, otpProvider: OTPProvider) -> Event {
+        let countdown = 30 - (timestamp.truncatingRemainder(dividingBy: 30))
+        if countdown == 30 || firstCountDown {
+            firstCountDown = false
+            let otp = otpProvider.otp(intervalSince1970: timestamp)
+            return Event.otpChanged(otp: otp, countDown: countdown)
+        }
+        else {
+            return Event.countDown(countdown)
+        }
+    }
 }
 
 final class OTPTimerTests: XCTestCase {
@@ -55,9 +64,14 @@ final class OTPTimerTests: XCTestCase {
     }
 
     func test_publisher_publishOTPChangedEventAsFirstEvent() {
-        let exp = expectation(description: "waiting for event")
-        let sut = makeSUT(date: Date(timeIntervalSince1970: 3), interval: 0)
+        let expectedOTP = "111111"
+        let (sut, _) = makeSUT(
+            date: Date(timeIntervalSince1970: 3),
+            interval: 0,
+            otpProvider: { _ in expectedOTP }
+        )
         
+        let exp = expectation(description: "waiting for event")
         var receivedEvent = [OTPTimer.Event]()
         sut.publisher.sink{ [weak self] event in
             receivedEvent.append(event)
@@ -67,19 +81,36 @@ final class OTPTimerTests: XCTestCase {
 
         wait(for: [exp], timeout: 0.01)
         
-        XCTAssertEqual(receivedEvent, [.otpChanged(otp: "123456", countDown: 27.0)])
+        XCTAssertEqual(receivedEvent, [.otpChanged(otp: expectedOTP, countDown: 27.0)])
     }
 
 }
 
-private extension OTPTimerTests {
-    func makeSUT(date: Date, interval: TimeInterval = 1.0, file: StaticString = #filePath, line: UInt = #line) -> OTPTimer {
-        let sut = OTPTimer(startingDate: date, interval: interval)
+extension OTPTimerTests {
+    private func makeSUT(
+        date: Date,
+        interval: TimeInterval = 1.0,
+        otpProvider: @escaping (TimeInterval) -> OTPProvider.OTP,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (sut: OTPTimer, spy: OTPProviderSpy) {
+        let spy = OTPProviderSpy.init(otpProvider: otpProvider)
+        let sut = OTPTimer(startingDate: date, interval: interval, otpProvider: spy)
         trackForMemoryLeaks(sut, file: file, line: line)
-        return sut
+        return (sut, spy)
     }
     
-    func clearCancellables() {
+    private func clearCancellables() {
         cancellables.removeAll()
+    }
+    
+    private struct OTPProviderSpy: OTPProvider {
+        private let otpProvider: (TimeInterval) -> OTPProvider.OTP
+        
+        init(otpProvider: @escaping (TimeInterval) -> OTPProvider.OTP) {
+            self.otpProvider = otpProvider
+        }
+        
+        func otp(intervalSince1970: TimeInterval) -> OTP { otpProvider(intervalSince1970) }
     }
 }
