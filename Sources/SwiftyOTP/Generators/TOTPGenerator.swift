@@ -32,10 +32,10 @@ public struct TOTPGenerator {
     ///   - digits: The number of digits in the generated OTP. Must be within the range (6...8).
     ///   - timeStep: The time step duration in seconds. The default is 30 seconds.
     ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
-    /// - Throws:
-    ///   - `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
-    ///   - `Error.invalidHex`: If the `seed` is not in correct hex representation
-    ///   - `Error.invalidEncoding`: If the `seed` is not in correct base32 or base64 representation
+    ///
+    /// - Throws: `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
+    /// - Throws: `Error.invalidHex`: If the `seed` is not in correct hex representation
+    /// - Throws: `Error.invalidEncoding`: If the `seed` is not in correct base32 or base64 representation
     public init(seed: Seed, digits: Int = 6, timeStep: UInt = 30, algorithm: HashingAlgorithm = .sha1) throws {
         self.hotp = try HOTPGenerator(seed: seed, digits: digits, algorithm: algorithm)
         self.timeStep = timeStep
