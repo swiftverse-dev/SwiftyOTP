@@ -63,32 +63,47 @@ final class OTPTimerTests: XCTestCase {
     
     var cancellables = Set<AnyCancellable>()
     
+    override class func setUp() {
+        super.setUp()
+        setupTimestampIncrement()
+    }
+    
     override func setUp() {
         super.setUp()
         clearCancellables()
     }
 
-    func test_publisher_publishOTPChangedEventAsFirstEvent() {
+    func test_publisher_publishesOTPChangedEventAsFirstEvent() {
         let expectedOTP = "111 111"
-        let (sut, _) = makeSUT(
+        let sut = makeSUT(
             date: Date(timeIntervalSince1970: 3),
             interval: 0,
             otpProvider: { _ in expectedOTP }
         )
         
-        expect(sut.publisher, toCatch: [.otpChanged(otp: expectedOTP, countdown: 27.0)])
+        expect(sut.publisher, toCatch: [.otpChanged(otp: expectedOTP, countdown: 26.0)]) // 30 - (3 + increment(1)) = 26
     }
     
-    func test_publisher_publishCountDownEventAfterTheFirstAndWhenCountdownIsNot30() {
-        let (sut, _) = makeSUT(
+    func test_publisher_publishesCountDownEventAfterTheFirstEventAndWhenCountdownIsNot30() {
+        let sut = makeSUT(
             date: Date(timeIntervalSince1970: 3),
             interval: 0
         )
         
-        expect(sut.publisher.dropFirst(), toCatch: [.countdown(27.0)])
+        expect(sut.publisher.dropFirst(), toCatch: [.countdown(25.0)]) // 30 - (3 + increment(2)) = 25
     }
 
-//    func test_publisher_publishOTPChangedAndCountdownEventsBasedOn
+    func test_publisher_publishesOTPChangedEventWhenTimeWindowChanges() {
+        
+        let expectedOTP = "111 111"
+        let sut = makeSUT(
+            date: Date(timeIntervalSince1970: 28),
+            interval: 0,
+            otpProvider: { _ in expectedOTP }
+        )
+        
+        expect(sut.publisher.dropFirst(), toCatch: [.otpChanged(otp: expectedOTP, countdown: 30)]) // 30 - (28 + increment(2)) = 30
+    }
 }
 
 extension OTPTimerTests {
@@ -98,11 +113,11 @@ extension OTPTimerTests {
         otpProvider: @escaping (TimeInterval) -> TOTPProvider.OTP = { _ in "111 111" },
         file: StaticString = #filePath,
         line: UInt = #line
-    ) -> (sut: OTPTimer, spy: OTPProviderSpy) {
+    ) -> OTPTimer {
         let spy = OTPProviderSpy.init(otpProvider: otpProvider)
         let sut = OTPTimer(startingDate: date, interval: interval, otpProvider: spy)
         trackForMemoryLeaks(sut, file: file, line: line)
-        return (sut, spy)
+        return sut
     }
     
     private func expect(_ publisher: some Publisher<OTPTimer.Event, Never>, toCatch expectedEvents: [OTPTimer.Event], file: StaticString = #filePath, line: UInt = #line) {
@@ -120,6 +135,10 @@ extension OTPTimerTests {
         wait(for: [exp], timeout: 0.01)
         
         XCTAssertEqual(receivedEvents, expectedEvents, file: file, line: line)
+    }
+    
+    private static func setupTimestampIncrement() {
+        OTPTimer.incrementTimestamp = { timestamp, _ in timestamp + 1 }
     }
     
     private func clearCancellables() {
