@@ -9,11 +9,15 @@ final class TOTPGeneratorTests: XCTestCase {
     }
     
     func test_currentOTP_generateExpectedOTP() throws {
-        TOTPGenerator.currentDateProvider = { Date(timeIntervalSince1970: 59) }
+        let dateProvider = { Date(timeIntervalSince1970: 59) }
         
-        let sutSHA1 = try makeSUT(seed: seedSha1, algo: .sha1)
-        let sutSHA256 = try makeSUT(seed: seedSha256, algo: .sha256)
-        let sutSHA512 = try makeSUT(seed: seedSha512, algo: .sha512)
+        var sutSHA1 = try makeSUT(seed: seedSha1, algo: .sha1)
+        var sutSHA256 = try makeSUT(seed: seedSha256, algo: .sha256)
+        var sutSHA512 = try makeSUT(seed: seedSha512, algo: .sha512)
+        
+        sutSHA1.currentDateProvider = dateProvider
+        sutSHA256.currentDateProvider = dateProvider
+        sutSHA512.currentDateProvider = dateProvider
 
         XCTAssertEqual(sutSHA1.currentOTP, "94287082")
         XCTAssertEqual(sutSHA256.currentOTP, "46119246")

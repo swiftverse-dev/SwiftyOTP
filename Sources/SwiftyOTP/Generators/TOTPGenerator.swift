@@ -9,7 +9,7 @@ import Foundation
 
 /// Represents a Time-Based One-Time Password (HOTP) generator.
 public struct TOTPGenerator {
-    static var currentDateProvider: () -> Date = Date.init
+    var currentDateProvider: () -> Date = Date.init
     
     /// The secret seed data used for generating OTPs.
     public var seed: Data { hotp.seed }
@@ -44,7 +44,7 @@ public struct TOTPGenerator {
     
     /// The current One-Time Password (OTP) for the current time.
     public var currentOTP: String {
-        otp(at: Self.currentDateProvider())
+        otp(at: currentDateProvider())
     }
 
     /// Generate the One-Time Password (OTP) for the provided Date.

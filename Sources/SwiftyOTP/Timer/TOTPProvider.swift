@@ -12,6 +12,3 @@ public protocol TOTPProvider {
     var timeStep: UInt { get }
     func otp(intervalSince1970: TimeInterval) -> OTP
 }
-
-
-extension TOTPGenerator: TOTPProvider {}
