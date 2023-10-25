@@ -51,6 +51,11 @@ public final class OTPTimer {
     /// The publisher that emits events related to countdowns and OTP changes.
     public let publisher: Publisher
     
+    /// The timestep configured for the timer
+    public var timeStep: UInt { otpProvider.timeStep }
+    
+    private let otpProvider: TOTPProvider
+    
     /**
     Initializes an OTPTimer instance.
      
@@ -60,6 +65,7 @@ public final class OTPTimer {
         - otpProvider: A TOTPProvider conforming instance for generating OTPs.
     */
     public init(startingDate: Date = .init(), interval: Interval = 1.0, otpProvider: TOTPProvider) {
+        self.otpProvider = otpProvider
         self.publisher = Self.timer(every: interval, startingFrom: startingDate, otpProvider: otpProvider)
     }
     
