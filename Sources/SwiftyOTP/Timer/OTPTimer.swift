@@ -75,7 +75,7 @@ extension OTPTimer {
     internal static var incrementTimestamp: (_ timestamp: Interval, _ interval: Interval) -> Interval = { $0 + $1 }
     
     private static func timer(every interval: Interval, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
-        let startTime = Date()
+        var startTime = Date()
         let timestamp = date.timeIntervalSince1970
         var currentStep: UInt64? = nil
         return Timer.publish(every: interval, on: .current, in: .default)
@@ -83,6 +83,7 @@ extension OTPTimer {
             .scan(timestamp) { timestamp, now in
                 // Calculating this time interval should maintain consistency for the timer countdown if the app goes background
                 let interval = now.timeIntervalSince(startTime)
+                startTime = now
                 return incrementTimestamp(timestamp, interval) }
             .map{ convertToEvent($0, currentStep: &currentStep, otpProvider: otpProvider) }
             .eraseToAnyPublisher()

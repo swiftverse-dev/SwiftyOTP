@@ -14,14 +14,10 @@ class OTPTimerTestCase: XCTestCase {
     
     var cancellables = Set<AnyCancellable>()
     
-    override class func setUp() {
-        super.setUp()
-        setupTimestampIncrement()
-    }
-    
     override func setUp() {
         super.setUp()
         clearCancellables()
+        setupTimestampIncrement()
     }
     
     func expect(_ publisher: some Publisher<OTPTimer.Event, Never>, toCatch expectedEvents: [OTPTimer.Event], file: StaticString = #filePath, line: UInt = #line) {
@@ -44,7 +40,7 @@ class OTPTimerTestCase: XCTestCase {
 }
 
 extension OTPTimerTestCase {
-    private static func setupTimestampIncrement() {
+    private func setupTimestampIncrement() {
         OTPTimer.incrementTimestamp = { timestamp, _ in timestamp + 1 }
     }
     
