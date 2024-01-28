@@ -92,7 +92,7 @@ extension OTPTimer {
     private static func convertToEvent(_ timestamp: Interval, currentStep: inout UInt64?, otpProvider: TOTPProvider) -> Event {
         let timeStep = otpProvider.timeStep.asDouble
         let countdown = timeStep - (timestamp.truncatingRemainder(dividingBy: timeStep))
-        let newStep = timestamp.asUInt / 30
+        let newStep = (timestamp / timeStep).floor.asUInt
         if currentStep != newStep {
             currentStep = newStep
             let otp = otpProvider.otp(intervalSince1970: timestamp)

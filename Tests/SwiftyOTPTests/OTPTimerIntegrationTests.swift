@@ -25,7 +25,7 @@ final class OTPTimerIntegrationTests: OTPTimerTestCase {
         )
     }
     
-    func test_publisher_() throws {
+    func test_publisher_oneSecondIntervalMakeCountdownUpdateEveryOneSecond() throws {
         OTPTimer.incrementTimestamp = { $0 + $1 }
         
         let seed = Seed.data(seedSha1)
