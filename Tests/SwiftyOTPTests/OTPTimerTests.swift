@@ -41,7 +41,23 @@ final class OTPTimerTests: OTPTimerTestCase {
             otpProvider: { _ in expectedOTP }
         )
         
-        expect(sut.publisher.dropFirst(), toCatch: [.otpChanged(otp: expectedOTP, countdown: 30)]) // 30 - (28 + increment(2)) = 30
+        expect(sut.publisher.dropFirst(), toCatch: [.otpChanged(otp: expectedOTP, countdown: 30)]) // 30 - (28 + increment(2)) = 0 -> new time window -> 30
+    }
+    
+    func test_publisher_publishesOTPChangedEventWhenTimeWindowChangesWithoutPassingFromZero() {
+        
+        OTPTimer.incrementTimestamp = { timestamp, _ in timestamp + 4 }
+        let expectedOTP = "111 111"
+        let sut = makeSUT(
+            date: Date(timeIntervalSince1970: 24),
+            interval: 0,
+            otpProvider: { _ in expectedOTP }
+        )
+        
+        expect(sut.publisher.dropFirst(), toCatch: [
+            // 30 - (24 + increment(2*4)) = -2 -> new window -> 28
+            .otpChanged(otp: expectedOTP, countdown: 28),
+        ])
     }
 }
 

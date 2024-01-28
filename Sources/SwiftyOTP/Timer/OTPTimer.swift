@@ -75,25 +75,30 @@ extension OTPTimer {
     internal static var incrementTimestamp: (_ timestamp: Interval, _ interval: Interval) -> Interval = { $0 + $1 }
     
     private static func timer(every interval: Interval, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
+        let startTime = Date()
         let timestamp = date.timeIntervalSince1970
-        var firstCountDown = true
+        var currentStep: UInt64? = nil
         return Timer.publish(every: interval, on: .current, in: .default)
             .autoconnect()
-            .scan(timestamp) { timestamp, _ in incrementTimestamp(timestamp, interval) }
-            .map{ convertToEvent($0, firstCountDown: &firstCountDown, otpProvider: otpProvider) }
+            .scan(timestamp) { timestamp, now in
+                // Calculating this time interval should maintain consistency for the timer countdown if the app goes background
+                let interval = now.timeIntervalSince(startTime)
+                return incrementTimestamp(timestamp, interval) }
+            .map{ convertToEvent($0, currentStep: &currentStep, otpProvider: otpProvider) }
             .eraseToAnyPublisher()
     }
     
-    private static func convertToEvent(_ timestamp: Interval, firstCountDown: inout Bool, otpProvider: TOTPProvider) -> Event {
+    private static func convertToEvent(_ timestamp: Interval, currentStep: inout UInt64?, otpProvider: TOTPProvider) -> Event {
         let timeStep = otpProvider.timeStep.asDouble
         let countdown = timeStep - (timestamp.truncatingRemainder(dividingBy: timeStep))
-        if timeStep - countdown < 1 || firstCountDown {
-            firstCountDown = false
+        let newStep = timestamp.asUInt / 30
+        if currentStep != newStep {
+            currentStep = newStep
             let otp = otpProvider.otp(intervalSince1970: timestamp)
-            return Event.otpChanged(otp: otp, countdown: countdown)
+            return .otpChanged(otp: otp, countdown: countdown)
         }
         else {
-            return Event.countdown(countdown)
+            return .countdown(countdown)
         }
     }
 }
