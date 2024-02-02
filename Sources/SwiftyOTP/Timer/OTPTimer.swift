@@ -64,21 +64,40 @@ public final class OTPTimer {
         - interval: The time interval (in seconds) at which events are generated (default is 1.0).
         - otpProvider: A TOTPProvider conforming instance for generating OTPs.
     */
-    public init(startingDate: Date = .init(), interval: Interval = 1.0, otpProvider: TOTPProvider) {
-        self.otpProvider = otpProvider
-        self.publisher = Self.timer(every: interval, startingFrom: startingDate, otpProvider: otpProvider)
+    public convenience init(startingDate: Date = .init(), interval: Interval = 1.0, otpProvider: TOTPProvider) {
+        self.init(
+            startingDate: startingDate,
+            timer: .init(interval: interval, runLoop: .current, mode: .common),
+            otpProvider: otpProvider
+        )
     }
     
+    /**
+    Initializes an OTPTimer instance.
+     
+     - Parameters:
+        - startingDate: The starting date for the timer (default is the current date).
+        - timer: Preset timer publisher to synchronize the countdown
+        - otpProvider: A TOTPProvider conforming instance for generating OTPs.
+    */
+    public init(startingDate: Date = .init(), timer: Timer.TimerPublisher, otpProvider: TOTPProvider) {
+        self.otpProvider = otpProvider
+        self.publisher = Self.timer(
+            timer,
+            startingFrom: startingDate,
+            otpProvider: otpProvider
+        )
+    }
 }
 
 extension OTPTimer {
     internal static var incrementTimestamp: (_ timestamp: Interval, _ interval: Interval) -> Interval = { $0 + $1 }
     
-    private static func timer(every interval: Interval, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
+    private static func timer(_ publisher: Timer.TimerPublisher, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
         var startTime = Date()
         let timestamp = date.timeIntervalSince1970
         var currentStep: UInt64? = nil
-        return Timer.publish(every: interval, on: .current, in: .default)
+        return publisher
             .autoconnect()
             .scan(timestamp) { timestamp, now in
                 // Calculating this time interval should maintain consistency for the timer countdown if the app goes background
