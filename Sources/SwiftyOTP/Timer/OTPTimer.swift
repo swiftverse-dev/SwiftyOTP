@@ -67,7 +67,7 @@ public final class OTPTimer {
     public convenience init(startingDate: Date = .init(), interval: Interval = 1.0, otpProvider: TOTPProvider) {
         self.init(
             startingDate: startingDate,
-            timer: .init(interval: interval, runLoop: .current, mode: .common),
+            timer: Timer.publish(every: interval, on: .current, in: .common).autoconnect(),
             otpProvider: otpProvider
         )
     }
@@ -80,7 +80,7 @@ public final class OTPTimer {
         - timer: Preset timer publisher to synchronize the countdown
         - otpProvider: A TOTPProvider conforming instance for generating OTPs.
     */
-    public init(startingDate: Date = .init(), timer: Timer.TimerPublisher, otpProvider: TOTPProvider) {
+    public init(startingDate: Date = .init(), timer: Publishers.Autoconnect<Timer.TimerPublisher>, otpProvider: TOTPProvider) {
         self.otpProvider = otpProvider
         self.publisher = Self.timer(
             timer,
@@ -93,12 +93,11 @@ public final class OTPTimer {
 extension OTPTimer {
     internal static var incrementTimestamp: (_ timestamp: Interval, _ interval: Interval) -> Interval = { $0 + $1 }
     
-    private static func timer(_ publisher: Timer.TimerPublisher, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
+    private static func timer(_ publisher: Publishers.Autoconnect<Timer.TimerPublisher>, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
         var startTime = Date()
         let timestamp = date.timeIntervalSince1970
         var currentStep: UInt64? = nil
         return publisher
-            .autoconnect()
             .scan(timestamp) { timestamp, now in
                 // Calculating this time interval should maintain consistency for the timer countdown if the app goes background
                 let interval = now.timeIntervalSince(startTime)
