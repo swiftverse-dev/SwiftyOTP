@@ -15,7 +15,7 @@ final class Countdown {
     public let interval: TimeInterval
     public private(set) lazy var publisher = subject.eraseToAnyPublisher()
     
-    private var timer: Timer?
+    private(set) var timer: Timer?
     private var windowSize: Double { countdown.asDouble }
     private let subject = PassthroughSubject<TimeInterval, Never>()
     
@@ -89,6 +89,27 @@ final class CountdownTests: XCTestCase {
             
         XCTAssertEqual(events, [30, 27, 24, 21, 18])
     }
+    
+    func test_stop_stopsTimerCorrectly() {
+        let sut = makeSUT()
+        var count = 0
+        let exp = expectation(description: #function)
+        
+        sut.publisher.sink { [weak sut] _ in
+            count += 1
+            if count == 3 {
+                sut?.stop()
+                exp.fulfill()
+            }
+        }
+        .store(in: &cancellables)
+        
+        sut.start()
+        wait(for: [exp])
+        
+        XCTAssertEqual(count, 3)
+        XCTAssertNil(sut.timer)
+    }
 }
 
 private extension CountdownTests {
@@ -134,6 +155,5 @@ private final class DateProvider {
     func incrementDate() -> Date {
         defer { startingDate.addTimeInterval(interval) }
         return startingDate
-        
     }
 }
