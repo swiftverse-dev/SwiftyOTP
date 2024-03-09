@@ -69,18 +69,25 @@ final class CountdownTests: XCTestCase {
                 sut.start()
             }
             
-        
         XCTAssertEqual(events, [30, 29, 28, 27, 26])
     }
     
     func test_start_restartCountdownCorrectlyAfterWindowChanges() {
-        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 26.5))
+        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 27.5))
         let events = getFirstEvents(5, from: sut) {
                 sut.start()
             }
             
-        
         XCTAssertEqual(events, [3, 2, 1, 30, 29])
+    }
+    
+    func test_start_sendsCorrectCountdownEventsForIntervalGreaterThanOne() {
+        let sut = makeSUT(interval: 3)
+        let events = getFirstEvents(5, from: sut) {
+                sut.start()
+            }
+            
+        XCTAssertEqual(events, [30, 27, 24, 21, 18])
     }
 }
 
@@ -98,8 +105,7 @@ private extension CountdownTests {
         
         sut.publisher
             .map{
-                let rounded = $0.rounded(.up)
-                return rounded == $0 ? ($0 + 1) : rounded
+                $0.rounded(.up)
             }
             .sink { c in
                 countdowns.append(c)
@@ -126,7 +132,7 @@ private final class DateProvider {
     }
     
     func incrementDate() -> Date {
-        startingDate.addTimeInterval(1)
+        defer { startingDate.addTimeInterval(interval) }
         return startingDate
         
     }
