@@ -72,6 +72,16 @@ final class CountdownTests: XCTestCase {
         
         XCTAssertEqual(events, [30, 29, 28, 27, 26])
     }
+    
+    func test_start_restartCountdownCorrectlyAfterWindowChanges() {
+        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 26.5))
+        let events = getFirstEvents(5, from: sut) {
+                sut.start()
+            }
+            
+        
+        XCTAssertEqual(events, [3, 2, 1, 30, 29])
+    }
 }
 
 private extension CountdownTests {
@@ -89,7 +99,7 @@ private extension CountdownTests {
         sut.publisher
             .map{
                 let rounded = $0.rounded(.up)
-                return rounded == $0 ? $0 + 1 : rounded
+                return rounded == $0 ? ($0 + 1) : rounded
             }
             .sink { c in
                 countdowns.append(c)
