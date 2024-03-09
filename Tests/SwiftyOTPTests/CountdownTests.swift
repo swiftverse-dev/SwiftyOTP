@@ -63,6 +63,15 @@ final class CountdownTests: XCTestCase {
         XCTAssertEqual(countdowns, [])
     }
 
+    func test_start_startsSendingCorrectCountdownEvents() {
+        let sut = makeSUT()
+        let events = getFirstEvents(5, from: sut) {
+                sut.start()
+            }
+            
+        
+        XCTAssertEqual(events, [30, 29, 28, 27, 26])
+    }
 }
 
 private extension CountdownTests {
@@ -71,6 +80,29 @@ private extension CountdownTests {
         let sut = Countdown(countdown: 30, interval: 0, dateProvider: dateProvider.incrementDate)
         trackForMemoryLeaks(sut)
         return sut
+    }
+    
+    func getFirstEvents(_ eventNumber: Int, from sut: Countdown, after action: @escaping () -> Void) -> [TimeInterval] {
+        var countdowns = [TimeInterval]()
+        let exp = expectation(description: #function)
+        
+        sut.publisher
+            .map{
+                let rounded = $0.rounded(.up)
+                return rounded == $0 ? $0 + 1 : rounded
+            }
+            .sink { c in
+                countdowns.append(c)
+                if countdowns.count == eventNumber {
+                    exp.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+        
+        action()
+        wait(for: [exp])
+        
+        return countdowns
     }
 }
 
