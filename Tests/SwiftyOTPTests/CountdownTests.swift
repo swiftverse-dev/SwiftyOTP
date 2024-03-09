@@ -9,40 +9,6 @@ import XCTest
 import Combine
 @testable import SwiftyOTP
 
-final class Countdown {
-    public let countdown: UInt
-    public let dateProvider: () -> Date
-    public let interval: TimeInterval
-    public private(set) lazy var publisher = subject.eraseToAnyPublisher()
-    
-    private(set) var timer: Timer?
-    private var windowSize: Double { countdown.asDouble }
-    private let subject = PassthroughSubject<TimeInterval, Never>()
-    
-    init(countdown: UInt, interval: TimeInterval = 1, dateProvider: @escaping () -> Date = Date.init) {
-        self.countdown = countdown
-        self.dateProvider = dateProvider
-        self.interval = interval
-    }
-    
-    func start() {
-        if timer != nil { return }
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            let countValue = dateProvider().timeIntervalSince1970
-                .truncatingRemainder(dividingBy: windowSize)
-            subject.send(windowSize - countValue)
-        }
-    }
-    
-    func stop() {
-        timer?.invalidate()
-        timer = nil
-    }
-    
-    deinit { stop() }
-}
-
 final class CountdownTests: XCTestCase {
     
     private var cancellables = Set<AnyCancellable>()
