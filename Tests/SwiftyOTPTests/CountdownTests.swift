@@ -66,8 +66,8 @@ final class CountdownTests: XCTestCase {
     func test_start_startsSendingCorrectCountdownEvents() {
         let sut = makeSUT()
         let events = getFirstEvents(5, from: sut) {
-                sut.start()
-            }
+            sut.start()
+        }
             
         XCTAssertEqual(events, [30, 29, 28, 27, 26])
     }
@@ -84,8 +84,8 @@ final class CountdownTests: XCTestCase {
     func test_start_sendsCorrectCountdownEventsForIntervalGreaterThanOne() {
         let sut = makeSUT(interval: 3)
         let events = getFirstEvents(5, from: sut) {
-                sut.start()
-            }
+            sut.start()
+        }
             
         XCTAssertEqual(events, [30, 27, 24, 21, 18])
     }
@@ -110,6 +110,22 @@ final class CountdownTests: XCTestCase {
         XCTAssertEqual(count, 3)
         XCTAssertNil(sut.timer)
     }
+    
+    func test_stopAndStart_restartTimerCorrectly() {
+        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 27.5))
+        let events1 = getFirstEvents(5, from: sut) {
+            sut.start()
+        }
+        
+        sut.stop()
+        
+        let events2 = getFirstEvents(3, from: sut) {
+            sut.start()
+        }
+            
+        XCTAssertEqual(events1, [3, 2, 1, 30, 29])
+        XCTAssertEqual(events2, [28, 27, 26])
+    }
 }
 
 private extension CountdownTests {
@@ -120,7 +136,7 @@ private extension CountdownTests {
         return sut
     }
     
-    func getFirstEvents(_ eventNumber: Int, from sut: Countdown, after action: @escaping () -> Void) -> [TimeInterval] {
+    func getFirstEvents(_ eventNumber: Int, from sut: Countdown, after action: () -> Void) -> [TimeInterval] {
         var countdowns = [TimeInterval]()
         let exp = expectation(description: #function)
         
