@@ -20,7 +20,7 @@ final class CountdownTests: XCTestCase {
     func test_init_doesNotSendAnyCountdownEvents() {
         let sut = makeSUT()
         
-        var countdowns = [Double]()
+        var countdowns = [Countdown.Event]()
         sut.publisher.sink { c in
             countdowns.append(c)
         }
@@ -34,6 +34,7 @@ final class CountdownTests: XCTestCase {
         let events = getFirstEvents(5, from: sut) {
             sut.start()
         }
+            .map(\.value)
             
         XCTAssertEqual(events, [30, 29, 28, 27, 26])
     }
@@ -41,8 +42,9 @@ final class CountdownTests: XCTestCase {
     func test_start_restartCountdownCorrectlyAfterWindowChanges() {
         let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 27.5))
         let events = getFirstEvents(5, from: sut) {
-                sut.start()
-            }
+            sut.start()
+        }
+            .map(\.value)
             
         XCTAssertEqual(events, [3, 2, 1, 30, 29])
     }
@@ -52,6 +54,7 @@ final class CountdownTests: XCTestCase {
         let events = getFirstEvents(5, from: sut) {
             sut.start()
         }
+            .map(\.value)
             
         XCTAssertEqual(events, [30, 27, 24, 21, 18])
     }
@@ -82,12 +85,14 @@ final class CountdownTests: XCTestCase {
         let events1 = getFirstEvents(5, from: sut) {
             sut.start()
         }
+            .map(\.value)
         
         sut.stop()
         
         let events2 = getFirstEvents(3, from: sut) {
             sut.start()
         }
+            .map(\.value)
             
         XCTAssertEqual(events1, [3, 2, 1, 30, 29])
         XCTAssertEqual(events2, [28, 27, 26])
@@ -102,13 +107,13 @@ private extension CountdownTests {
         return sut
     }
     
-    func getFirstEvents(_ eventNumber: Int, from sut: Countdown, after action: () -> Void) -> [TimeInterval] {
-        var countdowns = [TimeInterval]()
+    func getFirstEvents(_ eventNumber: Int, from sut: Countdown, after action: () -> Void) -> [Countdown.Event] {
+        var countdowns = [Countdown.Event]()
         let exp = expectation(description: #function)
         
         sut.publisher
             .map{
-                $0.rounded(.up)
+                $0.mapValue({ $0.rounded(.up) })
             }
             .sink { c in
                 countdowns.append(c)
