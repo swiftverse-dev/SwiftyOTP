@@ -18,9 +18,9 @@ final class OTPTimerIntegrationTests: OTPTimerTestCase {
         expect(
             sut.publisher,
             toCatch: [
-                .otpChanged(otp: "84755224", countdown: 2),
-                .countdown(1),
-                .otpChanged(otp: "94287082", countdown: 30)
+                .init(countdown: 2, otp: "84755224"),
+                .init(countdown: 1, otp: "84755224"),
+                .init(countdown: 30, otp: "94287082")
             ]
         )
     }
@@ -44,18 +44,13 @@ final class OTPTimerIntegrationTests: OTPTimerTestCase {
         wait(for: [exp], timeout: 5)
         
         events = events.map{ event in
-            switch event {
-            case .countdown(let interval):
-                OTPTimer.Event.countdown(round(interval))
-            case .otpChanged(let otp, let countdown):
-                OTPTimer.Event.otpChanged(otp: otp, countdown: round(countdown))
-            }
+                .init(countdown: round(event.countdown), otp: event.otp)
         }
         
         XCTAssertEqual(events, [
-            .otpChanged(otp: "84755224", countdown: 2),
-            .countdown(1),
-            .otpChanged(otp: "94287082", countdown: 30)
+            .init(countdown: 2, otp: "84755224"),
+            .init(countdown: 1, otp: "84755224"),
+            .init(countdown: 30, otp: "94287082")
         ])
     }
 

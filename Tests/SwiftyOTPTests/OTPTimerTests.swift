@@ -11,77 +11,64 @@ import Combine
 
 
 final class OTPTimerTests: OTPTimerTestCase {
-
-    func test_publisher_publishesOTPChangedEventAsFirstEvent() {
-        let expectedOTP = "111111"
-        let sut = makeSUT(
-            date: Date(timeIntervalSince1970: 3),
-            otpProvider: { _ in expectedOTP }
-        )
-        
-        expect(sut.publisher, toCatch: [.otpChanged(otp: expectedOTP, countdown: 27.0)])
-    }
     
-    func test_publisher_publishesCountDownEventAfterTheFirstEventAndWhenCountdownIsNot30() {
-        let sut = makeSUT(
-            date: Date(timeIntervalSince1970: 3)
+    func test_publisher_publishesOTPEventCorrectly() {
+        let (sut, _, _) = makeSUT(
+            date: Date(timeIntervalSince1970: 28)
         )
         
-        expect(sut.publisher.dropFirst(), toCatch: [.countdown(26.0)])
-    }
-
-    func test_publisher_publishesOTPChangedEventWhenTimeWindowChanges() {
-        
-        let expectedOTP = "111 111"
-        let sut = makeSUT(
-            date: Date(timeIntervalSince1970: 29),
-            otpProvider: { _ in expectedOTP }
-        )
-        
-        expect(sut.publisher.dropFirst(), toCatch: [.otpChanged(otp: expectedOTP, countdown: 30)])
-    }
-    
-    func test_publisher_publishesOTPChangedEventWhenTimeWindowChangesWithoutPassingFromZero() {
-
-        let expectedOTP = "111 111"
-        let sut = makeSUT(
-            date: Date(timeIntervalSince1970: 28),
-            interval: 4,
-            otpProvider: { _ in expectedOTP }
-        )
-        
-        expect(sut.publisher.dropFirst(), toCatch: [
-            .otpChanged(otp: expectedOTP, countdown: 28),
+        expect(sut.publisher, toCatch: [
+            .init(countdown: 2, otp: "0"),
+            .init(countdown: 1, otp: "0"),
+            .init(countdown: 30, otp: "1"),
+            .init(countdown: 29, otp: "1"),
         ])
     }
+    
 }
 
 extension OTPTimerTests {
     private func makeSUT(
         date: Date,
         interval: TimeInterval = 1.0,
-        otpProvider: @escaping (TimeInterval) -> TOTPProvider.OTP = { _ in "111111" },
         file: StaticString = #filePath,
         line: UInt = #line
-    ) -> SUT {
+    ) -> (sut: SUT, spy: OTPProviderSpy, countdown: Countdown) {
         let dateProvider = DateProvider(startingDate: date, interval: interval)
         let countdown = Countdown(timeStep: 30, interval: 0, dateProvider: dateProvider.incrementDate)
-        let spy = OTPProviderSpy.init(otpProvider: otpProvider)
-        let sut = SUT(countdown: countdown, totpProvider: spy, startsAutomatically: false)
+        let spy = OTPProviderSpy()
+        let sut = SUT(countdown: countdown, totpProvider: spy, startsAutomatically: true)
         trackForMemoryLeaks(countdown, file: file, line: line)
+        trackForMemoryLeaks(spy, file: file, line: line)
         trackForMemoryLeaks(sut, file: file, line: line)
-        return sut
+        return (sut, spy, countdown)
     }
     
-    private struct OTPProviderSpy: TOTPProvider {
-        private let otpProvider: (TimeInterval) -> TOTPProvider.OTP
-        let timeStep: UInt
+    private func getFirstEvents(_ eventNumber: Int, from sut: OTPTimer, after action: () -> Void) -> [OTPTimer.Event] {
+        var countdowns = [OTPTimer.Event]()
+        let exp = expectation(description: #function)
         
-        init(timeStep: UInt = 30, otpProvider: @escaping (TimeInterval) -> TOTPProvider.OTP) {
-            self.otpProvider = otpProvider
-            self.timeStep = timeStep
+        sut.publisher
+            .sink { c in
+                countdowns.append(c)
+                if countdowns.count == eventNumber {
+                    exp.fulfill()
+                }
+            }
+            .store(in: &cancellables)
+        
+        action()
+        wait(for: [exp])
+        
+        return countdowns
+    }
+    
+    fileprivate final class OTPProviderSpy: TOTPProvider {
+        private var count = 0
+        
+        func otp(intervalSince1970: TimeInterval) -> OTP {
+            defer{ count += 1 }
+            return "\(count)"
         }
-        
-        func otp(intervalSince1970: TimeInterval) -> OTP { otpProvider(intervalSince1970) }
     }
 }
