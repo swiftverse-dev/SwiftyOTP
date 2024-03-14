@@ -48,13 +48,13 @@ public final class Countdown {
     
     public func start() {
         if timer != nil { return }
-        var lastWindow: UInt = 0
+        var lastWindow: UInt?
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self else { return }
             let now = dateProvider().timeIntervalSince1970
             
             let currentWindow = UInt(now) / countdown
-            let isWindowChanged = currentWindow > lastWindow
+            let isWindowChanged = lastWindow == nil || currentWindow > lastWindow!
             lastWindow = currentWindow
             
             let countValue = now.truncatingRemainder(dividingBy: windowSize)

@@ -59,6 +59,23 @@ final class CountdownTests: XCTestCase {
         XCTAssertEqual(events, [30, 27, 24, 21, 18])
     }
     
+    func test_start_sendsCorrectWindowChangedEventsWhenWindowChanges() {
+        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 27.5))
+        let events = getFirstEvents(5, from: sut) {
+            sut.start()
+        }
+        
+        let expectedEvents = [
+            Countdown.Event.windowChanged(3),
+            Countdown.Event.countdown(2),
+            Countdown.Event.countdown(1),
+            Countdown.Event.windowChanged(30),
+            Countdown.Event.countdown(29)
+        ]
+            
+        XCTAssertEqual(events, expectedEvents)
+    }
+    
     func test_stop_stopsTimerCorrectly() {
         let sut = makeSUT()
         var count = 0
