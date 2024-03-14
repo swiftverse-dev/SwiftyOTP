@@ -7,7 +7,7 @@
 
 import XCTest
 import Combine
-@testable import SwiftyOTP
+import SwiftyOTP
 
 
 final class OTPTimerTests: OTPTimerTestCase {

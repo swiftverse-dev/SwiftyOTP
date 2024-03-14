@@ -44,8 +44,13 @@ public final class OTPTimer {
     - `otpChanged`: Indicates the OTP of this window.
     */
     public struct Event: Equatable {
-        let countdown: TimeInterval
-        let otp: String
+        public let countdown: TimeInterval
+        public let otp: String
+        
+        public init(countdown: TimeInterval, otp: String) {
+            self.countdown = countdown
+            self.otp = otp
+        }
     }
     
     /// The publisher that emits events related to countdowns and OTP changes.
