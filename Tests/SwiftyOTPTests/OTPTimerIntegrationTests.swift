@@ -13,7 +13,7 @@ final class OTPTimerIntegrationTests: OTPTimerTestCase {
 
     func test_publisher_publishesCorrectOTPsBasedOnSeed() throws {
         let seed = Seed.data(seedSha1)
-        let sut = try makeSUT(seed: seed, startingDate: Date(timeIntervalSince1970: 27))
+        let sut = try makeSUT(seed: seed, startingDate: Date(timeIntervalSince1970: 28))
         
         expect(
             sut.publisher,
@@ -26,13 +26,10 @@ final class OTPTimerIntegrationTests: OTPTimerTestCase {
     }
     
     func test_publisher_oneSecondIntervalMakeCountdownUpdateEveryOneSecond() throws {
-        OTPTimer.incrementTimestamp = { $0 + $1 }
-        
         let seed = Seed.data(seedSha1)
         let sut = try makeSUT(
             seed: seed,
-            startingDate: Date(timeIntervalSince1970: 27),
-            interval: 1
+            startingDate: Date(timeIntervalSince1970: 28)
         )
         
         let exp = expectation(description: "")
@@ -71,18 +68,19 @@ extension OTPTimerIntegrationTests {
     private func makeSUT(
         seed: Seed,
         startingDate: Date,
-        interval: TimeInterval = 0,
+        interval: TimeInterval = 1,
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws -> OTPTimer {
-        let provider = try TOTPGenerator(seed: seed, digits: 8)
-        let sut = OTPTimer(startingDate: startingDate, interval: interval, otpProvider: provider)
+        let timeStep: UInt = 30
+        let dateProvider = DateProvider(startingDate: startingDate, interval: interval)
+        let countdown = Countdown(timeStep: timeStep, interval: 0, dateProvider: dateProvider.incrementDate)
+        let provider = try TOTPGenerator(seed: seed, digits: 8, timeStep: timeStep)
+        let sut = OTPTimer(countdown: countdown, totpProvider: provider, startsAutomatically: true)
+        
+        trackForMemoryLeaks(countdown, file: file, line: line)
         trackForMemoryLeaks(sut, file: file, line: line)
         return sut
-    }
-    
-    private static func setupTimestampIncrement() {
-        OTPTimer.incrementTimestamp = { timestamp, _ in timestamp + 1 }
     }
     
     private func clearCancellables() {

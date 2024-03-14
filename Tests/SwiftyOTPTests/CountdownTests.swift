@@ -117,10 +117,15 @@ final class CountdownTests: XCTestCase {
 }
 
 private extension CountdownTests {
-    func makeSUT(startingDate: Date = Date(timeIntervalSince1970: 0), interval: TimeInterval = 1) -> Countdown {
+    func makeSUT(
+        startingDate: Date = Date(timeIntervalSince1970: 0),
+        interval: TimeInterval = 1,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Countdown {
         let dateProvider = DateProvider(startingDate: startingDate, interval: interval)
-        let sut = Countdown(countdown: 30, interval: 0, dateProvider: dateProvider.incrementDate)
-        trackForMemoryLeaks(sut)
+        let sut = Countdown(timeStep: 30, interval: 0, dateProvider: dateProvider.incrementDate)
+        trackForMemoryLeaks(sut, file: file, line: line)
         return sut
     }
     
@@ -144,20 +149,5 @@ private extension CountdownTests {
         wait(for: [exp])
         
         return countdowns
-    }
-}
-
-private final class DateProvider {
-    private var startingDate: Date
-    private let interval: TimeInterval
-    
-    init(startingDate: Date, interval: TimeInterval) {
-        self.startingDate = startingDate
-        self.interval = interval
-    }
-    
-    func incrementDate() -> Date {
-        defer { startingDate.addTimeInterval(interval) }
-        return startingDate
     }
 }

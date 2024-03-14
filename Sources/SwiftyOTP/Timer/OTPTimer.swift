@@ -46,78 +46,63 @@ public final class OTPTimer {
     public enum Event: Equatable {
         case countdown(Interval)
         case otpChanged(otp: String, countdown: Interval)
+        
+        var countdown: Interval {
+            switch self {
+            case .countdown(let countdown), .otpChanged(_, let countdown):
+                countdown
+            }
+        }
     }
     
     /// The publisher that emits events related to countdowns and OTP changes.
-    public let publisher: Publisher
+    public private(set) lazy var publisher: Publisher = makeEventPublisher()
     
     /// The timestep configured for the timer
-    public var timeStep: UInt { otpProvider.timeStep }
+    public var timeStep: UInt { countdown.timeStep }
     
+    private let countdown: Countdown
     private let otpProvider: TOTPProvider
     
     /**
     Initializes an OTPTimer instance.
      
      - Parameters:
-        - startingDate: The starting date for the timer (default is the current date).
-        - interval: The time interval (in seconds) at which events are generated (default is 1.0).
-        - otpProvider: A TOTPProvider conforming instance for generating OTPs.
+        - countdown: The starting date for the timer (default is the current date).
+        - totpProvider: A TOTPProvider conforming instance for generating OTPs.
+        - startsAutomatically: A flag that will make countdown starts automatically after init
     */
-    public convenience init(startingDate: Date = .init(), interval: Interval = 1.0, otpProvider: TOTPProvider) {
-        self.init(
-            startingDate: startingDate,
-            timer: Timer.publish(every: interval, on: .current, in: .common).autoconnect(),
-            otpProvider: otpProvider
-        )
+    public init(countdown: Countdown, totpProvider: TOTPProvider, startsAutomatically: Bool = true) {
+        defer { countdown.start() }
+        self.countdown = countdown
+        self.otpProvider = totpProvider
     }
     
-    /**
-    Initializes an OTPTimer instance.
-     
-     - Parameters:
-        - startingDate: The starting date for the timer (default is the current date).
-        - timer: Preset timer publisher to synchronize the countdown
-        - otpProvider: A TOTPProvider conforming instance for generating OTPs.
-    */
-    public init(startingDate: Date = .init(), timer: Publishers.Autoconnect<Timer.TimerPublisher>, otpProvider: TOTPProvider) {
-        self.otpProvider = otpProvider
-        self.publisher = Self.timer(
-            timer,
-            startingFrom: startingDate,
-            otpProvider: otpProvider
-        )
+    public func start() {
+        countdown.start()
+    }
+    
+    public func stop() {
+        countdown.stop()
+    }
+    
+    private func makeEventPublisher() -> Publisher {
+        countdown.publisher
+            .map{ [otpProvider] in
+                $0.otpEvent(using: otpProvider)
+            }
+            .eraseToAnyPublisher()
     }
 }
 
-extension OTPTimer {
-    internal static var incrementTimestamp: (_ timestamp: Interval, _ interval: Interval) -> Interval = { $0 + $1 }
-    
-    private static func timer(_ publisher: Publishers.Autoconnect<Timer.TimerPublisher>, startingFrom date: Date, otpProvider: TOTPProvider) -> Publisher {
-        var startTime = Date()
-        let timestamp = date.timeIntervalSince1970
-        var currentStep: UInt64? = nil
-        return publisher
-            .scan(timestamp) { timestamp, now in
-                // Calculating this time interval should maintain consistency for the timer countdown if the app goes background
-                let interval = now.timeIntervalSince(startTime)
-                startTime = now
-                return incrementTimestamp(timestamp, interval) }
-            .map{ convertToEvent($0, currentStep: &currentStep, otpProvider: otpProvider) }
-            .eraseToAnyPublisher()
-    }
-    
-    private static func convertToEvent(_ timestamp: Interval, currentStep: inout UInt64?, otpProvider: TOTPProvider) -> Event {
-        let timeStep = otpProvider.timeStep.asDouble
-        let countdown = timeStep - (timestamp.truncatingRemainder(dividingBy: timeStep))
-        let newStep = (timestamp / timeStep).floor.asUInt
-        if currentStep != newStep {
-            currentStep = newStep
-            let otp = otpProvider.otp(intervalSince1970: timestamp)
-            return .otpChanged(otp: otp, countdown: countdown)
-        }
-        else {
-            return .countdown(countdown)
+private extension Countdown.Event {
+    func otpEvent(using provider: TOTPProvider) -> OTPTimer.Event {
+        switch self {
+        case .windowChanged(let value, let date):
+                .otpChanged(otp: provider.otp(intervalSince1970: date.timeIntervalSince1970), countdown: value)
+            
+        case .countdown(let value, _):
+                .countdown(value)
         }
     }
 }

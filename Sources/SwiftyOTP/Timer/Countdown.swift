@@ -38,17 +38,17 @@ public final class Countdown {
         }
     }
     
-    public let countdown: UInt
+    public let timeStep: UInt
     public let dateProvider: () -> Date
     public let interval: TimeInterval
     public private(set) lazy var publisher = subject.eraseToAnyPublisher()
     
     private(set) var timer: Timer?
-    private var windowSize: Double { countdown.asDouble }
+    private var windowSize: Double { timeStep.asDouble }
     private let subject = PassthroughSubject<Event, Never>()
     
-    public init(countdown: UInt, interval: TimeInterval = 1, dateProvider: @escaping () -> Date = Date.init) {
-        self.countdown = countdown
+    public init(timeStep: UInt, interval: TimeInterval = 1, dateProvider: @escaping () -> Date = Date.init) {
+        self.timeStep = timeStep
         self.dateProvider = dateProvider
         self.interval = interval
     }
@@ -61,7 +61,7 @@ public final class Countdown {
             let now = dateProvider()
             let currentTimestamp = now.timeIntervalSince1970
             
-            let currentWindow = UInt(currentTimestamp) / countdown
+            let currentWindow = UInt(currentTimestamp) / timeStep
             let isWindowChanged = lastWindow == nil || currentWindow > lastWindow!
             lastWindow = currentWindow
             

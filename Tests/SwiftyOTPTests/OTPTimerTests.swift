@@ -16,46 +16,41 @@ final class OTPTimerTests: OTPTimerTestCase {
         let expectedOTP = "111111"
         let sut = makeSUT(
             date: Date(timeIntervalSince1970: 3),
-            interval: 0,
             otpProvider: { _ in expectedOTP }
         )
         
-        expect(sut.publisher, toCatch: [.otpChanged(otp: expectedOTP, countdown: 26.0)]) // 30 - (3 + increment(1)) = 26
+        expect(sut.publisher, toCatch: [.otpChanged(otp: expectedOTP, countdown: 27.0)])
     }
     
     func test_publisher_publishesCountDownEventAfterTheFirstEventAndWhenCountdownIsNot30() {
         let sut = makeSUT(
-            date: Date(timeIntervalSince1970: 3),
-            interval: 0
+            date: Date(timeIntervalSince1970: 3)
         )
         
-        expect(sut.publisher.dropFirst(), toCatch: [.countdown(25.0)]) // 30 - (3 + increment(2)) = 25
+        expect(sut.publisher.dropFirst(), toCatch: [.countdown(26.0)])
     }
 
     func test_publisher_publishesOTPChangedEventWhenTimeWindowChanges() {
         
         let expectedOTP = "111 111"
         let sut = makeSUT(
-            date: Date(timeIntervalSince1970: 28),
-            interval: 0,
+            date: Date(timeIntervalSince1970: 29),
             otpProvider: { _ in expectedOTP }
         )
         
-        expect(sut.publisher.dropFirst(), toCatch: [.otpChanged(otp: expectedOTP, countdown: 30)]) // 30 - (28 + increment(2)) = 0 -> new time window -> 30
+        expect(sut.publisher.dropFirst(), toCatch: [.otpChanged(otp: expectedOTP, countdown: 30)])
     }
     
     func test_publisher_publishesOTPChangedEventWhenTimeWindowChangesWithoutPassingFromZero() {
-        
-        OTPTimer.incrementTimestamp = { timestamp, _ in timestamp + 4 }
+
         let expectedOTP = "111 111"
         let sut = makeSUT(
-            date: Date(timeIntervalSince1970: 24),
-            interval: 0,
+            date: Date(timeIntervalSince1970: 28),
+            interval: 4,
             otpProvider: { _ in expectedOTP }
         )
         
         expect(sut.publisher.dropFirst(), toCatch: [
-            // 30 - (24 + increment(2*4)) = -2 -> new window -> 28
             .otpChanged(otp: expectedOTP, countdown: 28),
         ])
     }
@@ -69,8 +64,11 @@ extension OTPTimerTests {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> SUT {
+        let dateProvider = DateProvider(startingDate: date, interval: interval)
+        let countdown = Countdown(timeStep: 30, interval: 0, dateProvider: dateProvider.incrementDate)
         let spy = OTPProviderSpy.init(otpProvider: otpProvider)
-        let sut = SUT(startingDate: date, interval: interval, otpProvider: spy)
+        let sut = SUT(countdown: countdown, totpProvider: spy, startsAutomatically: false)
+        trackForMemoryLeaks(countdown, file: file, line: line)
         trackForMemoryLeaks(sut, file: file, line: line)
         return sut
     }

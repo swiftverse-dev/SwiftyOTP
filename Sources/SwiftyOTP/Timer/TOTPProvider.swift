@@ -15,13 +15,11 @@ import Foundation
 
  Usage:
  - Conform to this protocol to implement TOTP generation logic.
- - Provide the time step duration (in seconds) and a method to generate TOTPs based on the current time interval since January 1, 1970.
  - Use the conforming type to generate TOTPs as needed.
 
  Example:
  ```swift
  struct MyTOTPProvider: TOTPProvider {
-    let timeStep: UInt = 30
 
     func otp(intervalSince1970: TimeInterval) -> OTP {
         // Implement TOTP generation logic here
@@ -35,9 +33,6 @@ import Foundation
 public protocol TOTPProvider {
     /// The type alias for a One-Time Password (OTP), typically represented as a string.
     typealias OTP = String
-    
-    /// The time step duration (in seconds) used for generating TOTPs.
-    var timeStep: UInt { get }
     
     /**
      Generates a Time-Based One-Time Password (TOTP) for the specified time interval since January 1, 1970.
