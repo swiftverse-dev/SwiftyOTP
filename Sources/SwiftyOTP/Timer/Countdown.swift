@@ -11,22 +11,29 @@ import Combine
 public final class Countdown {
     
     public enum Event: Equatable {
-        case windowChanged(TimeInterval)
-        case countdown(TimeInterval)
+        case windowChanged(value: TimeInterval, date: Date)
+        case countdown(value: TimeInterval, date: Date)
+        
+        public var date: Date {
+            switch self {
+            case .windowChanged(_, let date), .countdown(_, let date):
+                date
+            }
+        }
         
         public var value: TimeInterval {
             switch self {
-            case .windowChanged(let timeInterval), .countdown(let timeInterval):
+            case .windowChanged(let timeInterval, _), .countdown(let timeInterval, _):
                 timeInterval
             }
         }
         
         public func mapValue(_ mapBlock: (TimeInterval) throws -> TimeInterval) rethrows -> Self {
             switch self {
-            case .windowChanged(let timeInterval):
-                    try .windowChanged(mapBlock(timeInterval))
-            case .countdown(let timeInterval):
-                try .countdown(mapBlock(timeInterval))
+            case let .windowChanged( timeInterval, date):
+                try .windowChanged(value: mapBlock(timeInterval), date: date)
+            case let .countdown(timeInterval, date):
+                try .countdown(value: mapBlock(timeInterval), date: date)
             }
         }
     }
@@ -51,15 +58,18 @@ public final class Countdown {
         var lastWindow: UInt?
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self else { return }
-            let now = dateProvider().timeIntervalSince1970
+            let now = dateProvider()
+            let currentTimestamp = now.timeIntervalSince1970
             
-            let currentWindow = UInt(now) / countdown
+            let currentWindow = UInt(currentTimestamp) / countdown
             let isWindowChanged = lastWindow == nil || currentWindow > lastWindow!
             lastWindow = currentWindow
             
-            let countValue = now.truncatingRemainder(dividingBy: windowSize)
+            let countValue = currentTimestamp.truncatingRemainder(dividingBy: windowSize)
             let event = isWindowChanged ? Countdown.Event.windowChanged : Countdown.Event.countdown
-            subject.send(event(windowSize - countValue))
+            
+            let value = windowSize - countValue
+            subject.send(event(value, now))
         }
     }
     

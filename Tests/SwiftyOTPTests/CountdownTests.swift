@@ -66,11 +66,11 @@ final class CountdownTests: XCTestCase {
         }
         
         let expectedEvents = [
-            Countdown.Event.windowChanged(3),
-            Countdown.Event.countdown(2),
-            Countdown.Event.countdown(1),
-            Countdown.Event.windowChanged(30),
-            Countdown.Event.countdown(29)
+            Countdown.Event.windowChanged(value: 3, date: Date(timeIntervalSince1970: 27.5)),
+            Countdown.Event.countdown(value: 2, date: Date(timeIntervalSince1970: 28.5)),
+            Countdown.Event.countdown(value: 1, date: Date(timeIntervalSince1970: 29.5)),
+            Countdown.Event.windowChanged(value: 30, date: Date(timeIntervalSince1970: 30.5)),
+            Countdown.Event.countdown(value: 29, date: Date(timeIntervalSince1970: 31.5)),
         ]
             
         XCTAssertEqual(events, expectedEvents)
