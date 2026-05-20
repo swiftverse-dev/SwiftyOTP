@@ -39,5 +39,9 @@ let package = Package(
             swiftSettings: upcomingFeatures
         ),
     ],
-    swiftLanguageModes: [.v6]
+    // Temporarily on .v5 during the swift-6 migration: the legacy Combine
+    // `Countdown.start()` captures a local `var lastWindow` in its `Timer`
+    // closure, which Swift 6 mode rejects. The Phase 5 cutover deletes the
+    // legacy file and restores `.v6` together with `StrictConcurrency`.
+    swiftLanguageModes: [.v5]
 )
