@@ -61,7 +61,9 @@ final class CountdownV2Tests: LeakTrackingTestCase {
 
         let a = Task { await sut.ticks.collect(2) }
         let b = Task { await sut.ticks.collect(2) }
-        await Task.megaYield()
+        // 40 yields = 20 per subscriber so both `for await` loops reach their
+        // `clock.timer` suspension before `advance` fires.
+        await Task.megaYield(count: 40)
         await clock.advance(by: .seconds(2))
 
         let aTicks = await a.value
@@ -81,8 +83,10 @@ final class CountdownV2Tests: LeakTrackingTestCase {
         await clock.advance(by: .seconds(2))
         _ = await first.value
 
-        // Allow termination handlers to run and the producer to be torn down.
-        await Task.megaYield()
+        // 40 yields ensures the `onTermination` handler runs, `unsubscribe(_:)`
+        // fires, the producer task is cancelled, and `lastWindow` is reset
+        // before the next subscriber registers.
+        await Task.megaYield(count: 40)
 
         // Second subscription: collect 2 more ticks.
         let second = Task { await sut.ticks.collect(2) }
