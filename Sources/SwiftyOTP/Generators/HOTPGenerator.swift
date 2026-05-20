@@ -9,7 +9,7 @@ import Foundation
 import CryptoKit
 
 /// Represents a Hash-Based One-Time Password (HOTP) generator.
-public struct HOTPGenerator {
+public struct HOTPGenerator: Sendable {
     /// The secret seed data used for generating OTPs.
     public let seed: Data
     
