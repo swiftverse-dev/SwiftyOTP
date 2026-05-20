@@ -21,10 +21,10 @@ import Foundation
  ```swift
  struct MyTOTPProvider: TOTPProvider {
 
-    func otp(intervalSince1970: TimeInterval) -> OTP {
+    func otp(at: Date) -> TOTP {
         // Implement TOTP generation logic here
-        // This method should generate and return a TOTP as a string for the given time interval.
-        // The OTP should be short-lived and unique for each time interval.
+        // This method should generate and return a TOTP as a string for the given ``Date``.
+        // The TOTP should be short-lived and unique for each time interval.
         // Typically, it involves cryptographic operations using a secret key.
         // Return the generated TOTP as a string.
     }
@@ -32,14 +32,26 @@ import Foundation
 */
 public protocol TOTPProvider: Sendable {
     /// The type alias for a One-Time Password (OTP), typically represented as a string.
-    typealias OTP = String
-    
+    typealias TOTP = String
+
     /**
-     Generates a Time-Based One-Time Password (TOTP) for the specified time interval since January 1, 1970.
-     
-     - Parameter intervalSince1970: The time interval, in seconds, since January 1, 1970, for which to generate the TOTP.
-     
+     Generates a Time-Based One-Time Password (TOTP) for the specified ``Date``.
+
+     - Parameter date: The ``Date`` from which the TOTP is generated.
+
      - Returns: A TOTP as a string, unique for the specified time interval.
     */
-    func otp(intervalSince1970: TimeInterval) -> OTP
+    func otp(at date: Date) -> TOTP
+}
+
+public extension TOTPProvider {
+    /// The One-Time Password (OTP) for the provided Unix Timestamp.
+    func otp(unixTimestamp timestamp: UnixTimestamp) -> TOTP {
+        otp(at: Date(timeIntervalSince1970: timestamp.timestampInSeconds))
+    }
+
+    /// The One-Time Password (OTP) for the provided TimeInterval
+    func otp(intervalSince1970: TimeInterval) -> TOTP {
+        otp(at: Date(timeIntervalSince1970: intervalSince1970))
+    }
 }

@@ -29,13 +29,10 @@ final class OTPTimerIntegrationTests: LeakTrackingTestCase {
         // Start at t=28 so the first three ticks straddle the t=30 boundary.
         let (sut, clock) = try makeSUT(startingAt: 28)
 
-        await Task.megaYield()
-
         // Tick 1: now=28, windowChanged=true,  otp = otp(at: 28) = 84755224
         // Tick 2: now=29, windowChanged=false, otp = "84755224" (cached)
         // Tick 3: now=30, windowChanged=true,  otp = otp(at: 30) = 94287082
-        await clock.advance(by: .seconds(3))
-        await Task.megaYield()
+        await clock.advance(by: .seconds(3)) 
 
         #expect(sut.currentOTP == "94287082")
     }

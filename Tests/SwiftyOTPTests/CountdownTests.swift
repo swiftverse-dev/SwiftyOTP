@@ -16,7 +16,7 @@ final class CountdownTests: LeakTrackingTestCase {
         let (sut, clock, _) = makeSUT(startingAt: 0)
 
         let collected = Task { await sut.ticks.collect(3) }
-        await Task.megaYield()
+        
         await clock.advance(by: .seconds(3))
         let ticks = await collected.value
 
@@ -28,7 +28,7 @@ final class CountdownTests: LeakTrackingTestCase {
         let (sut, clock, _) = makeSUT(startingAt: 0)
 
         let collected = Task { await sut.ticks.collect(1) }
-        await Task.megaYield()
+        
         await clock.advance(by: .seconds(1))
         let ticks = await collected.value
 
@@ -41,7 +41,7 @@ final class CountdownTests: LeakTrackingTestCase {
         let (sut, clock, _) = makeSUT(startingAt: 27)
 
         let collected = Task { await sut.ticks.collect(5) }
-        await Task.megaYield()
+        
         await clock.advance(by: .seconds(5))
         let ticks = await collected.value
 
@@ -79,7 +79,7 @@ final class CountdownTests: LeakTrackingTestCase {
 
         // First subscription: collect 2 ticks, then drop.
         let first = Task { await sut.ticks.collect(2) }
-        await Task.megaYield()
+        
         await clock.advance(by: .seconds(2))
         _ = await first.value
 
@@ -90,7 +90,7 @@ final class CountdownTests: LeakTrackingTestCase {
 
         // Second subscription: collect 2 more ticks.
         let second = Task { await sut.ticks.collect(2) }
-        await Task.megaYield()
+        
         await clock.advance(by: .seconds(2))
         let secondTicks = await second.value
 

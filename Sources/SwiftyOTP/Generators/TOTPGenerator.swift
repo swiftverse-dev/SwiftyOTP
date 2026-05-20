@@ -54,33 +54,8 @@ public struct TOTPGenerator: Sendable {
     }
 }
 
-public extension TOTPGenerator {
-    enum UnixTimestamp: Sendable {
-        case seconds(UInt64)
-        case milliseconds(UInt64)
-        
-        var timestampInSeconds: TimeInterval {
-            switch self {
-            case let .seconds(timestamp): TimeInterval(timestamp)
-            case let .milliseconds(timestamp): TimeInterval(timestamp) / 1000
-            }
-        }
-    }
-    
-    /// The One-Time Password (OTP) for the provided Unix Timestamp.
-    func otp(unixTimestamp timestamp: UnixTimestamp) -> String {
-        otp(at: Date(timeIntervalSince1970: timestamp.timestampInSeconds))
-    }
-    
-    /// The One-Time Password (OTP) for the provided TimeInterval
-    func otp(intervalSince1970: TimeInterval) -> String {
-        otp(at: Date(timeIntervalSince1970: intervalSince1970))
-    }
-}
-
 // MARK: Helpers
 private extension TOTPGenerator {
-
     func stepCounter(at date: Date) -> UInt64 {
         (date.timeIntervalSince1970.floor / timeStep.asDouble).floor.asUInt
     }
