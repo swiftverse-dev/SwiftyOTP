@@ -34,6 +34,26 @@ final class CountdownV2Tests: LeakTrackingTestCase {
 
         #expect(ticks.first?.windowChanged == true)
     }
+
+    @Test
+    func `ticks - reports windowChanged true when crossing a window boundary`() async {
+        // Start at t=27 so the boundary at t=30 falls inside the collected ticks.
+        let (sut, clock, _) = makeSUT(startingAt: 27)
+
+        let collected = Task { await sut.ticks.collect(5) }
+        await Task.megaYield()
+        await clock.advance(by: .seconds(5))
+        let ticks = await collected.value
+
+        // DateBox emits 27, 28, 29, 30, 31 across the five ticks.
+        // Tick 1: now=27, currentWindow=0, value=30-27=3,  windowChanged=true  (first emission)
+        // Tick 2: now=28, currentWindow=0, value=30-28=2,  windowChanged=false
+        // Tick 3: now=29, currentWindow=0, value=30-29=1,  windowChanged=false
+        // Tick 4: now=30, currentWindow=1, value=30-0=30,  windowChanged=true  (boundary)
+        // Tick 5: now=31, currentWindow=1, value=30-1=29,  windowChanged=false
+        #expect(ticks.map(\.windowChanged) == [true, false, false, true, false])
+        #expect(ticks.map(\.value) == [3, 2, 1, 30, 29])
+    }
 }
 
 private extension CountdownV2Tests {
