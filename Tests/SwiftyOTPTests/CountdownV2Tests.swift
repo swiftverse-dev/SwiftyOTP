@@ -70,6 +70,31 @@ final class CountdownV2Tests: LeakTrackingTestCase {
         #expect(aTicks == bTicks)
         #expect(aTicks.count == 2)
     }
+
+    @Test
+    func `ticks - resumes correctly after all subscribers drop and a new one subscribes`() async {
+        let (sut, clock, _) = makeSUT(startingAt: 0)
+
+        // First subscription: collect 2 ticks, then drop.
+        let first = Task { await sut.ticks.collect(2) }
+        await Task.megaYield()
+        await clock.advance(by: .seconds(2))
+        _ = await first.value
+
+        // Allow termination handlers to run and the producer to be torn down.
+        await Task.megaYield()
+
+        // Second subscription: collect 2 more ticks.
+        let second = Task { await sut.ticks.collect(2) }
+        await Task.megaYield()
+        await clock.advance(by: .seconds(2))
+        let secondTicks = await second.value
+
+        // The second subscription sees windowChanged=true on its first tick because
+        // `lastWindow` is reset when the producer is torn down.
+        #expect(secondTicks.count == 2)
+        #expect(secondTicks.first?.windowChanged == true)
+    }
 }
 
 private extension CountdownV2Tests {
