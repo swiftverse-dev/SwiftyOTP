@@ -30,7 +30,7 @@ import Foundation
     }
  }
 */
-public protocol TOTPProvider {
+public protocol TOTPProvider: Sendable {
     /// The type alias for a One-Time Password (OTP), typically represented as a string.
     typealias OTP = String
     
