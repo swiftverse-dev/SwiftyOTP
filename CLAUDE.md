@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Pure Swift Package, no UI layer. Implements RFC 4226 (HOTP) and RFC 6238 (TOTP). Public API surface: `HOTPGenerator`, `TOTPGenerator`, `Seed`, `HashingAlgorithm`, `OTPTimer`, `Countdown`, `TOTPProvider`. Targets iOS 13+ and macOS 10.15+.
+Pure Swift Package, no UI layer. Implements RFC 4226 (HOTP) and RFC 6238 (TOTP). Public API surface: `HOTPGenerator`, `TOTPGenerator`, `Seed`, `HashingAlgorithm`, `OTPTimer`, `Countdown`, `TOTPProvider`. Targets iOS 17+ and macOS 14+ (driven by Observation framework requirements).
 
 This file describes the conventions the project is migrating *toward*. Code on disk that contradicts a rule (XCTest, Combine `.publisher`, `Foundation.Timer`) is legacy awaiting migration, not a counter-example.
 
