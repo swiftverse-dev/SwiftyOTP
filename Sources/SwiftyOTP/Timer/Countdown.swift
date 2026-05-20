@@ -70,25 +70,21 @@ public final class Countdown: Sendable {
     public var ticks: AsyncStream<Tick> {
         AsyncStream { continuation in
             let id = UUID()
-            // Speculatively spawn a producer; if another subscriber already
-            // installed one under the lock, cancel ours and let theirs run.
-            // Capture `clock` directly so the task does not create a persistent
-            // strong reference to `self` (Countdown) via `guard let self`.
-            // `self` is accessed weakly per iteration for `broadcastTick`.
-            let clock = self.clock
-            let candidate = Task { [weak self] in
-                for await _ in clock.timer(interval: .seconds(1)) {
-                    if Task.isCancelled { return }
-                    self?.broadcastTick()
+            state.withLock { state in
+                state.subscribers[id] = continuation
+                if state.producerTask == nil {
+                    // Capture `clock` directly so the task does not pin `self`
+                    // strongly across the entire `for await` loop; `self` is
+                    // accessed weakly per iteration for `broadcastTick`.
+                    let clock = self.clock
+                    state.producerTask = Task { [weak self] in
+                        for await _ in clock.timer(interval: .seconds(1)) {
+                            if Task.isCancelled { return }
+                            self?.broadcastTick()
+                        }
+                    }
                 }
             }
-            let lostRace = state.withLock { state -> Bool in
-                state.subscribers[id] = continuation
-                guard state.producerTask == nil else { return true }
-                state.producerTask = candidate
-                return false
-            }
-            if lostRace { candidate.cancel() }
             continuation.onTermination = { [weak self] _ in self?.unsubscribe(id: id) }
         }
     }
