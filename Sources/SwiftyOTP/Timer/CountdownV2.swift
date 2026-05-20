@@ -85,7 +85,7 @@ public final class CountdownV2: Sendable {
         let timestamp = now.timeIntervalSince1970
         let currentWindow = UInt(timestamp) / timeStep
         let remainder = timestamp.truncatingRemainder(dividingBy: windowSize)
-        let value = windowSize - remainder - 1
+        let value = windowSize - remainder
 
         let (tick, subs) = state.withLock { state -> (Tick, [AsyncStream<Tick>.Continuation]) in
             let windowChanged = state.lastWindow.map { currentWindow > $0 } ?? true

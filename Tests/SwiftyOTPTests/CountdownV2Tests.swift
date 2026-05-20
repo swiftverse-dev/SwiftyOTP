@@ -20,7 +20,7 @@ final class CountdownV2Tests: LeakTrackingTestCase {
         await clock.advance(by: .seconds(3))
         let ticks = await collected.value
 
-        #expect(ticks.map(\.value) == [29, 28, 27])
+        #expect(ticks.map(\.value) == [30, 29, 28])
     }
 }
 
