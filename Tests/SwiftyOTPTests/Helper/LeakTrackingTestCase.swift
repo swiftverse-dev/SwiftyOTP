@@ -18,7 +18,14 @@ class LeakTrackingTestCase {
     private var teardownBlocks: [() -> Void] = []
 
     deinit {
-        for block in teardownBlocks { block() }
+        for i in teardownBlocks.indices {
+            teardownBlocks[i]()
+            // Nil out each block immediately after calling it so that any
+            // objects it captures are released before the next block runs.
+            // This ensures cleanup actions (e.g. `stop()`) release their
+            // targets before the subsequent leak-check blocks fire.
+            teardownBlocks[i] = {}
+        }
     }
 
     func addTeardownBlock(_ block: @escaping () -> Void) {

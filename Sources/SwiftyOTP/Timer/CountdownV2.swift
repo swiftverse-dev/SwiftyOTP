@@ -74,11 +74,14 @@ public final class CountdownV2: Sendable {
             let id = UUID()
             // Speculatively spawn a producer; if another subscriber already
             // installed one under the lock, cancel ours and let theirs run.
+            // Capture `clock` directly so the task does not create a persistent
+            // strong reference to `self` (CountdownV2) via `guard let self`.
+            // `self` is accessed weakly per iteration for `broadcastTick`.
+            let clock = self.clock
             let candidate = Task { [weak self] in
-                guard let self else { return }
-                for await _ in self.clock.timer(interval: .seconds(1)) {
+                for await _ in clock.timer(interval: .seconds(1)) {
                     if Task.isCancelled { return }
-                    self.broadcastTick()
+                    self?.broadcastTick()
                 }
             }
             let lostRace = state.withLock { state -> Bool in

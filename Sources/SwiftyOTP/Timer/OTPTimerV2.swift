@@ -53,20 +53,39 @@ public final class OTPTimerV2 {
         if startsAutomatically { start() }
     }
 
-    /// Starts the consumer task if it is not already running. Idempotent.
-    /// Implemented in Phase 3B.
+    /// Starts the consumer task if not already running. Idempotent.
     public func start() {
-        // Implemented in Phase 3B.
+        guard consumerTask == nil else { return }
+        let stream = countdownSource.ticks
+        consumerTask = Task { @MainActor [weak self] in
+            for await tick in stream {
+                if Task.isCancelled { break }
+                guard let self else { break }
+                self.handle(tick: tick)
+            }
+        }
     }
 
     /// Cancels the consumer task if any. After calling, observable state
-    /// stops being updated. Idempotent. Implemented in Phase 3B.
+    /// stops being updated. Idempotent.
     public func stop() {
-        // Implemented in Phase 3B.
+        consumerTask?.cancel()
+        consumerTask = nil
+    }
+
+    private func handle(tick: Tick) {
+        let otp: String
+        if tick.windowChanged || lastOTP == nil {
+            otp = totpProvider.otp(intervalSince1970: tick.date.timeIntervalSince1970)
+        } else {
+            otp = lastOTP ?? ""
+        }
+        lastOTP = otp
+        currentOTP = otp
+        countdown = tick.value
     }
 
     deinit {
-        // Cancellation is nonisolated; safe from `@MainActor` deinit.
         consumerTask?.cancel()
     }
 }
