@@ -22,6 +22,18 @@ final class CountdownV2Tests: LeakTrackingTestCase {
 
         #expect(ticks.map(\.value) == [30, 29, 28])
     }
+
+    @Test
+    func `ticks - reports windowChanged true on the first emission`() async {
+        let (sut, clock, _) = makeSUT(startingAt: 0)
+
+        let collected = Task { await sut.ticks.collect(1) }
+        await Task.megaYield()
+        await clock.advance(by: .seconds(1))
+        let ticks = await collected.value
+
+        #expect(ticks.first?.windowChanged == true)
+    }
 }
 
 private extension CountdownV2Tests {
