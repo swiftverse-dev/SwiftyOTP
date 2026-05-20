@@ -10,6 +10,9 @@ import Foundation
 import os
 import Clocks
 
+/// One emission from a `Countdown` (or `CountdownV2` during the migration):
+/// the seconds remaining in the current OTP window, the wall-clock date the
+/// tick was produced, and whether this tick crossed a window boundary.
 public struct Tick: Sendable, Equatable {
     public let value: TimeInterval
     public let date: Date
@@ -22,10 +25,19 @@ public struct Tick: Sendable, Equatable {
     }
 }
 
+/// Lazy, multi-subscriber countdown source driven by a `Clock<Duration>`.
+///
+/// Each call to `ticks` returns a fresh `AsyncStream<Tick>`. A single
+/// producer task starts when the first subscriber begins iterating and is
+/// cancelled when the last subscriber drops, so the clock loop only runs
+/// while at least one consumer is listening.
+///
+/// Renamed to `Countdown` at the Phase 5 cutover of the swift-6 migration.
 public final class CountdownV2: Sendable {
+    /// OTP window length in seconds, as supplied at init.
     public let timeStep: UInt
 
-    fileprivate struct State {
+    private struct State {
         var subscribers: [UUID: AsyncStream<Tick>.Continuation] = [:]
         var producerTask: Task<Void, Never>?
         var lastWindow: UInt?
@@ -35,6 +47,15 @@ public final class CountdownV2: Sendable {
     private let clock: any Clock<Duration>
     private let dateProvider: @Sendable () -> Date
 
+    /// Creates a countdown that ticks at one-second cadence on the provided
+    /// clock, computing each tick's `value` against `timeStep`.
+    ///
+    /// - Parameters:
+    ///   - timeStep: OTP window length in seconds (typically 30 or 60).
+    ///   - clock: Time source for the producer loop. Defaults to
+    ///     `ContinuousClock`. Use `TestClock` in tests for deterministic ticks.
+    ///   - dateProvider: Source of the `Date` carried by each `Tick`. Inject a
+    ///     deterministic provider in tests; defaults to `Date()`.
     public init(
         timeStep: UInt,
         clock: any Clock<Duration> = ContinuousClock(),
@@ -45,14 +66,28 @@ public final class CountdownV2: Sendable {
         self.dateProvider = dateProvider
     }
 
+    /// Stream of countdown ticks. Each call returns a fresh `AsyncStream`;
+    /// multiple concurrent subscribers receive the same tick payloads with
+    /// synchronized cadence.
     public var ticks: AsyncStream<Tick> {
         AsyncStream { continuation in
             let id = UUID()
-            let needsStart = state.withLock { state -> Bool in
-                state.subscribers[id] = continuation
-                return state.producerTask == nil
+            // Speculatively spawn a producer; if another subscriber already
+            // installed one under the lock, cancel ours and let theirs run.
+            let candidate = Task { [weak self] in
+                guard let self else { return }
+                for await _ in self.clock.timer(interval: .seconds(1)) {
+                    if Task.isCancelled { return }
+                    self.broadcastTick()
+                }
             }
-            if needsStart { startProducer() }
+            let lostRace = state.withLock { state -> Bool in
+                state.subscribers[id] = continuation
+                guard state.producerTask == nil else { return true }
+                state.producerTask = candidate
+                return false
+            }
+            if lostRace { candidate.cancel() }
             continuation.onTermination = { [weak self] _ in self?.unsubscribe(id: id) }
         }
     }
@@ -66,17 +101,6 @@ public final class CountdownV2: Sendable {
                 state.lastWindow = nil
             }
         }
-    }
-
-    private func startProducer() {
-        let task = Task { [weak self] in
-            guard let self else { return }
-            for await _ in self.clock.timer(interval: .seconds(1)) {
-                if Task.isCancelled { return }
-                self.broadcastTick()
-            }
-        }
-        state.withLock { $0.producerTask = task }
     }
 
     private func broadcastTick() {
