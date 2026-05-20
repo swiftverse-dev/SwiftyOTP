@@ -6,8 +6,6 @@
 //  Pairs with `swift-clocks` `TestClock.advance(by:)` for deterministic tests.
 //
 
-import Foundation
-
 extension AsyncSequence where Element: Sendable {
     /// Collect the first `count` elements of this stream into an array.
     /// If the sequence ends before `count` elements arrive, returns what was collected.
