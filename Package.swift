@@ -3,12 +3,7 @@
 import PackageDescription
 
 let upcomingFeatures: [SwiftSetting] = [
-    // Approachable concurrency — relaxes strict mode so half-migrated states compile.
-    // Re-tightened to StrictConcurrency in Phase 4 (cutover).
-    .enableUpcomingFeature("InferIsolatedConformances"),
-    .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
-    .enableUpcomingFeature("DisableOutwardActorInference"),
-    .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
+    .enableUpcomingFeature("StrictConcurrency"),
 ]
 
 let package = Package(
@@ -39,9 +34,5 @@ let package = Package(
             swiftSettings: upcomingFeatures
         ),
     ],
-    // Temporarily on .v5 during the swift-6 migration: the legacy Combine
-    // `Countdown.start()` captures a local `var lastWindow` in its `Timer`
-    // closure, which Swift 6 mode rejects. The Phase 5 cutover deletes the
-    // legacy file and restores `.v6` together with `StrictConcurrency`.
-    swiftLanguageModes: [.v5]
+    swiftLanguageModes: [.v6]
 )

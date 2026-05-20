@@ -1,82 +1,124 @@
 //
-//  File.swift
-//  
+//  Countdown.swift
+//  SwiftyOTP
 //
-//  Created by Lorenzo Limoli on 09/03/24.
+//  swift-clocks-driven countdown source. Broadcasts `Tick` values via
+//  `AsyncStream` to multiple subscribers with shared cadence.
 //
 
 import Foundation
-import Combine
+import os
+import Clocks
 
-public final class Countdown {
-    
-    public enum Event: Equatable {
-        case windowChanged(value: TimeInterval, date: Date)
-        case countdown(value: TimeInterval, date: Date)
-        
-        public var date: Date {
-            switch self {
-            case .windowChanged(_, let date), .countdown(_, let date):
-                date
-            }
-        }
-        
-        public var value: TimeInterval {
-            switch self {
-            case .windowChanged(let timeInterval, _), .countdown(let timeInterval, _):
-                timeInterval
-            }
-        }
-        
-        public func mapValue(_ mapBlock: (TimeInterval) throws -> TimeInterval) rethrows -> Self {
-            switch self {
-            case let .windowChanged( timeInterval, date):
-                try .windowChanged(value: mapBlock(timeInterval), date: date)
-            case let .countdown(timeInterval, date):
-                try .countdown(value: mapBlock(timeInterval), date: date)
-            }
-        }
+/// One emission from a `Countdown`: the seconds remaining in the current OTP
+/// window, the wall-clock date the tick was produced, and whether this tick
+/// crossed a window boundary.
+public struct Tick: Sendable, Equatable {
+    public let value: TimeInterval
+    public let date: Date
+    public let windowChanged: Bool
+
+    public init(value: TimeInterval, date: Date, windowChanged: Bool) {
+        self.value = value
+        self.date = date
+        self.windowChanged = windowChanged
     }
-    
+}
+
+/// Lazy, multi-subscriber countdown source driven by a `Clock<Duration>`.
+///
+/// Each call to `ticks` returns a fresh `AsyncStream<Tick>`. A single
+/// producer task starts when the first subscriber begins iterating and is
+/// cancelled when the last subscriber drops, so the clock loop only runs
+/// while at least one consumer is listening.
+public final class Countdown: Sendable {
+    /// OTP window length in seconds, as supplied at init.
     public let timeStep: UInt
-    public let dateProvider: () -> Date
-    public let interval: TimeInterval
-    public private(set) lazy var publisher = subject.eraseToAnyPublisher()
-    
-    private(set) var timer: Timer?
-    private var windowSize: Double { timeStep.asDouble }
-    private let subject = PassthroughSubject<Event, Never>()
-    
-    public init(timeStep: UInt, interval: TimeInterval = 1, dateProvider: @escaping () -> Date = Date.init) {
-        self.timeStep = timeStep
-        self.dateProvider = dateProvider
-        self.interval = interval
-    }
-    
-    public func start() {
-        if timer != nil { return }
+
+    private struct State {
+        var subscribers: [UUID: AsyncStream<Tick>.Continuation] = [:]
+        var producerTask: Task<Void, Never>?
         var lastWindow: UInt?
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            let now = dateProvider()
-            let currentTimestamp = now.timeIntervalSince1970
-            
-            let currentWindow = UInt(currentTimestamp) / timeStep
-            let isWindowChanged = lastWindow == nil || currentWindow > lastWindow!
-            lastWindow = currentWindow
-            
-            let countValue = currentTimestamp.truncatingRemainder(dividingBy: windowSize)
-            let event = isWindowChanged ? Countdown.Event.windowChanged : Countdown.Event.countdown
-            
-            let value = windowSize - countValue
-            subject.send(event(value, now))
+    }
+
+    private let state = OSAllocatedUnfairLock<State>(initialState: State())
+    private let clock: any Clock<Duration>
+    private let dateProvider: @Sendable () -> Date
+
+    /// Creates a countdown that ticks at one-second cadence on the provided
+    /// clock, computing each tick's `value` against `timeStep`.
+    ///
+    /// - Parameters:
+    ///   - timeStep: OTP window length in seconds (typically 30 or 60).
+    ///   - clock: Time source for the producer loop. Defaults to
+    ///     `ContinuousClock`. Use `TestClock` in tests for deterministic ticks.
+    ///   - dateProvider: Source of the `Date` carried by each `Tick`. Inject a
+    ///     deterministic provider in tests; defaults to `Date()`.
+    public init(
+        timeStep: UInt,
+        clock: any Clock<Duration> = ContinuousClock(),
+        dateProvider: @Sendable @escaping () -> Date = { Date() }
+    ) {
+        self.timeStep = timeStep
+        self.clock = clock
+        self.dateProvider = dateProvider
+    }
+
+    /// Stream of countdown ticks. Each call returns a fresh `AsyncStream`;
+    /// multiple concurrent subscribers receive the same tick payloads with
+    /// synchronized cadence.
+    public var ticks: AsyncStream<Tick> {
+        AsyncStream { continuation in
+            let id = UUID()
+            // Speculatively spawn a producer; if another subscriber already
+            // installed one under the lock, cancel ours and let theirs run.
+            // Capture `clock` directly so the task does not create a persistent
+            // strong reference to `self` (Countdown) via `guard let self`.
+            // `self` is accessed weakly per iteration for `broadcastTick`.
+            let clock = self.clock
+            let candidate = Task { [weak self] in
+                for await _ in clock.timer(interval: .seconds(1)) {
+                    if Task.isCancelled { return }
+                    self?.broadcastTick()
+                }
+            }
+            let lostRace = state.withLock { state -> Bool in
+                state.subscribers[id] = continuation
+                guard state.producerTask == nil else { return true }
+                state.producerTask = candidate
+                return false
+            }
+            if lostRace { candidate.cancel() }
+            continuation.onTermination = { [weak self] _ in self?.unsubscribe(id: id) }
         }
     }
-    
-    public func stop() {
-        timer?.invalidate()
-        timer = nil
+
+    private func unsubscribe(id: UUID) {
+        state.withLock { state in
+            state.subscribers.removeValue(forKey: id)
+            if state.subscribers.isEmpty {
+                state.producerTask?.cancel()
+                state.producerTask = nil
+                state.lastWindow = nil
+            }
+        }
     }
-    
-    deinit { stop() }
+
+    private func broadcastTick() {
+        let now = dateProvider()
+        let windowSize = Double(timeStep)
+        let timestamp = now.timeIntervalSince1970
+        let currentWindow = UInt(timestamp) / timeStep
+        let remainder = timestamp.truncatingRemainder(dividingBy: windowSize)
+        let value = windowSize - remainder
+
+        let (tick, subs) = state.withLock { state -> (Tick, [UUID: AsyncStream<Tick>.Continuation].Values) in
+            let windowChanged = state.lastWindow.map { currentWindow > $0 } ?? true
+            state.lastWindow = currentWindow
+            let tick = Tick(value: value, date: now, windowChanged: windowChanged)
+            return (tick, state.subscribers.values)
+        }
+
+        for sub in subs { sub.yield(tick) }
+    }
 }
