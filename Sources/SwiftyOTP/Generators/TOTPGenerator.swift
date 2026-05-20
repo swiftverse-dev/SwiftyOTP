@@ -8,8 +8,8 @@
 import Foundation
 
 /// Represents a Time-Based One-Time Password (HOTP) generator.
-public struct TOTPGenerator {
-    var currentDateProvider: () -> Date = Date.init
+public struct TOTPGenerator: Sendable {
+    var currentDateProvider: @Sendable () -> Date = { Date() }
     
     /// The secret seed data used for generating OTPs.
     public var seed: Data { hotp.seed }
@@ -55,7 +55,7 @@ public struct TOTPGenerator {
 }
 
 public extension TOTPGenerator {
-    enum UnixTimestamp {
+    enum UnixTimestamp: Sendable {
         case seconds(UInt64)
         case milliseconds(UInt64)
         
