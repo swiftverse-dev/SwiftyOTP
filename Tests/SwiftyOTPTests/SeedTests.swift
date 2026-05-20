@@ -1,54 +1,58 @@
 //
 //  SeedTests.swift
-//
-//
-//  Created by Lorenzo Limoli on 28/09/23.
+//  SwiftyOTPTests
 //
 
-import XCTest
+import Testing
+import Foundation
 @testable import SwiftyOTP
 
-final class SeedTests: XCTestCase {
-    
-    func test_seedFromHex_matchData() throws {
-        let expectedData = try Seed.data(dataSeed).data()
-        let sut = Seed.hex("3132333435363738393031323334353637383930")
-        XCTAssertEqual(try sut.data(), expectedData)
+@Suite("Seed")
+final class SeedTests: LeakTrackingTestCase {
+
+    private var dataSeed: Data {
+        "12345678901234567890".data(using: .ascii)!
     }
-    
-    func test_seedFromHex_throwsInvalidEncodingErrorForInvalidHexRepresentation() {
+
+    @Test
+    func `data() - hex matches data() when given the equivalent hex representation`() throws {
+        let expected = try Seed.data(self.dataSeed).data()
+        let sut = Seed.hex("3132333435363738393031323334353637383930")
+        #expect(try sut.data() == expected)
+    }
+
+    @Test
+    func `data() - throws when hex is invalid`() {
         let wrongHex = "3132333435363738393031323334353637383930" + "Z"
         let sut = Seed.hex(wrongHex)
-        XCTAssertThrowsError(try sut.data())
+        #expect(throws: (any Error).self) { try sut.data() }
     }
-    
-    func test_seedFromBase32_matchData() throws {
-        let expectedData = try Seed.data(dataSeed).data()
+
+    @Test
+    func `data() - base32 matches data() when given the equivalent base32 representation`() throws {
+        let expected = try Seed.data(self.dataSeed).data()
         let sut = Seed.base32("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ")
-        XCTAssertEqual(try sut.data(), expectedData)
+        #expect(try sut.data() == expected)
     }
-    
-    func test_seedFromBase32_throwsInvalidEncodingErrorForInvalidBase32Representation() {
+
+    @Test
+    func `data() - throws when base32 is invalid`() {
         let wrongBase32 = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" + "1"
         let sut = Seed.base32(wrongBase32)
-        XCTAssertThrowsError(try sut.data())
+        #expect(throws: (any Error).self) { try sut.data() }
     }
-    
-    func test_seedFromBase64_matchData() throws {
-        let expectedData = try Seed.data(dataSeed).data()
+
+    @Test
+    func `data() - base64 matches data() when given the equivalent base64 representation`() throws {
+        let expected = try Seed.data(self.dataSeed).data()
         let sut = Seed.base64("MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=")
-        XCTAssertEqual(try sut.data(), expectedData)
+        #expect(try sut.data() == expected)
     }
-    
-    func test_seedFromBase64_throwsInvalidEncodingErrorForInvalidBase64Representation() {
-        let wrongBase64 = String("MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=" + "!")
+
+    @Test
+    func `data() - throws when base64 is invalid`() {
+        let wrongBase64 = "MTIzNDU2Nzg5MDEyMzQ1Njc4OTA=" + "!"
         let sut = Seed.base64(wrongBase64)
-        XCTAssertThrowsError(try sut.data())
+        #expect(throws: (any Error).self) { try sut.data() }
     }
 }
-
-// MARK: HELPERS
-extension SeedTests {
-    var dataSeed: Data{ "12345678901234567890".data(using: .ascii)! }
-}
-
