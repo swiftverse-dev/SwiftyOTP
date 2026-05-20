@@ -54,6 +54,22 @@ final class CountdownV2Tests: LeakTrackingTestCase {
         #expect(ticks.map(\.windowChanged) == [true, false, false, true, false])
         #expect(ticks.map(\.value) == [3, 2, 1, 30, 29])
     }
+
+    @Test
+    func `ticks - multiple subscribers receive the same tick stream`() async {
+        let (sut, clock, _) = makeSUT(startingAt: 0)
+
+        let a = Task { await sut.ticks.collect(2) }
+        let b = Task { await sut.ticks.collect(2) }
+        await Task.megaYield()
+        await clock.advance(by: .seconds(2))
+
+        let aTicks = await a.value
+        let bTicks = await b.value
+
+        #expect(aTicks == bTicks)
+        #expect(aTicks.count == 2)
+    }
 }
 
 private extension CountdownV2Tests {
