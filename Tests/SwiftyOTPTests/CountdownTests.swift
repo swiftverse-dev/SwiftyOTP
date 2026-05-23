@@ -1,153 +1,116 @@
 //
 //  CountdownTests.swift
-//  
-//
-//  Created by Lorenzo Limoli on 09/03/24.
+//  SwiftyOTPTests
 //
 
-import XCTest
-import Combine
+import Testing
+import Foundation
+import Clocks
 @testable import SwiftyOTP
 
-final class CountdownTests: XCTestCase {
-    
-    private var cancellables = Set<AnyCancellable>()
-    
-    override func setUp() {
-        cancellables.removeAll()
-    }
-    
-    func test_init_doesNotSendAnyCountdownEvents() {
-        let sut = makeSUT()
+@Suite("Countdown")
+final class CountdownTests: LeakTrackingTestCase {
+
+    @Test
+    func `ticks - emits aligned countdown values at one-second cadence`() async {
+        let (sut, clock, _) = makeSUT(startingAt: 0)
+
+        let collected = Task { await sut.ticks.collect(3) }
         
-        var countdowns = [Countdown.Event]()
-        sut.publisher.sink { c in
-            countdowns.append(c)
-        }
-        .store(in: &cancellables)
-        
-        XCTAssertEqual(countdowns, [])
+        await clock.advance(by: .seconds(3))
+        let ticks = await collected.value
+
+        #expect(ticks.map(\.value) == [30, 29, 28])
     }
 
-    func test_start_startsSendingCorrectCountdownEvents() {
-        let sut = makeSUT()
-        let events = getFirstEvents(5, from: sut) {
-            sut.start()
-        }
-            .map(\.value)
-            
-        XCTAssertEqual(events, [30, 29, 28, 27, 26])
+    @Test
+    func `ticks - reports windowChanged true on the first emission`() async {
+        let (sut, clock, _) = makeSUT(startingAt: 0)
+
+        let collected = Task { await sut.ticks.collect(1) }
+        
+        await clock.advance(by: .seconds(1))
+        let ticks = await collected.value
+
+        #expect(ticks.first?.windowChanged == true)
     }
-    
-    func test_start_restartCountdownCorrectlyAfterWindowChanges() {
-        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 27.5))
-        let events = getFirstEvents(5, from: sut) {
-            sut.start()
-        }
-            .map(\.value)
-            
-        XCTAssertEqual(events, [3, 2, 1, 30, 29])
+
+    @Test
+    func `ticks - reports windowChanged true when crossing a window boundary`() async {
+        // Start at t=27 so the boundary at t=30 falls inside the collected ticks.
+        let (sut, clock, _) = makeSUT(startingAt: 27)
+
+        let collected = Task { await sut.ticks.collect(5) }
+        
+        await clock.advance(by: .seconds(5))
+        let ticks = await collected.value
+
+        // DateBox emits 27, 28, 29, 30, 31 across the five ticks.
+        // Tick 1: now=27, currentWindow=0, value=30-27=3,  windowChanged=true  (first emission)
+        // Tick 2: now=28, currentWindow=0, value=30-28=2,  windowChanged=false
+        // Tick 3: now=29, currentWindow=0, value=30-29=1,  windowChanged=false
+        // Tick 4: now=30, currentWindow=1, value=30-0=30,  windowChanged=true  (boundary)
+        // Tick 5: now=31, currentWindow=1, value=30-1=29,  windowChanged=false
+        #expect(ticks.map(\.windowChanged) == [true, false, false, true, false])
+        #expect(ticks.map(\.value) == [3, 2, 1, 30, 29])
     }
-    
-    func test_start_sendsCorrectCountdownEventsForIntervalGreaterThanOne() {
-        let sut = makeSUT(interval: 3)
-        let events = getFirstEvents(5, from: sut) {
-            sut.start()
-        }
-            .map(\.value)
-            
-        XCTAssertEqual(events, [30, 27, 24, 21, 18])
+
+    @Test
+    func `ticks - multiple subscribers receive the same tick stream`() async {
+        let (sut, clock, _) = makeSUT(startingAt: 0)
+
+        let a = Task { await sut.ticks.collect(2) }
+        let b = Task { await sut.ticks.collect(2) }
+        // 40 yields = 20 per subscriber so both `for await` loops reach their
+        // `clock.timer` suspension before `advance` fires.
+        await Task.megaYield(count: 40)
+        await clock.advance(by: .seconds(2))
+
+        let aTicks = await a.value
+        let bTicks = await b.value
+
+        #expect(aTicks == bTicks)
+        #expect(aTicks.count == 2)
     }
-    
-    func test_start_sendsCorrectWindowChangedEventsWhenWindowChanges() {
-        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 27.5))
-        let events = getFirstEvents(5, from: sut) {
-            sut.start()
-        }
+
+    @Test
+    func `ticks - resumes correctly after all subscribers drop and a new one subscribes`() async {
+        let (sut, clock, _) = makeSUT(startingAt: 0)
+
+        // First subscription: collect 2 ticks, then drop.
+        let first = Task { await sut.ticks.collect(2) }
         
-        let expectedEvents = [
-            Countdown.Event.windowChanged(value: 3, date: Date(timeIntervalSince1970: 27.5)),
-            Countdown.Event.countdown(value: 2, date: Date(timeIntervalSince1970: 28.5)),
-            Countdown.Event.countdown(value: 1, date: Date(timeIntervalSince1970: 29.5)),
-            Countdown.Event.windowChanged(value: 30, date: Date(timeIntervalSince1970: 30.5)),
-            Countdown.Event.countdown(value: 29, date: Date(timeIntervalSince1970: 31.5)),
-        ]
-            
-        XCTAssertEqual(events, expectedEvents)
-    }
-    
-    func test_stop_stopsTimerCorrectly() {
-        let sut = makeSUT()
-        var count = 0
-        let exp = expectation(description: #function)
+        await clock.advance(by: .seconds(2))
+        _ = await first.value
+
+        // 40 yields ensures the `onTermination` handler runs, `unsubscribe(_:)`
+        // fires, the producer task is cancelled, and `lastWindow` is reset
+        // before the next subscriber registers.
+        await Task.megaYield(count: 40)
+
+        // Second subscription: collect 2 more ticks.
+        let second = Task { await sut.ticks.collect(2) }
         
-        sut.publisher.sink { [weak sut] _ in
-            count += 1
-            if count == 3 {
-                sut?.stop()
-                exp.fulfill()
-            }
-        }
-        .store(in: &cancellables)
-        
-        sut.start()
-        wait(for: [exp])
-        
-        XCTAssertEqual(count, 3)
-        XCTAssertNil(sut.timer)
-    }
-    
-    func test_stopAndStart_restartTimerCorrectly() {
-        let sut = makeSUT(startingDate: Date(timeIntervalSince1970: 27.5))
-        let events1 = getFirstEvents(5, from: sut) {
-            sut.start()
-        }
-            .map(\.value)
-        
-        sut.stop()
-        
-        let events2 = getFirstEvents(3, from: sut) {
-            sut.start()
-        }
-            .map(\.value)
-            
-        XCTAssertEqual(events1, [3, 2, 1, 30, 29])
-        XCTAssertEqual(events2, [28, 27, 26])
+        await clock.advance(by: .seconds(2))
+        let secondTicks = await second.value
+
+        // The second subscription sees windowChanged=true on its first tick because
+        // `lastWindow` is reset when the producer is torn down.
+        #expect(secondTicks.count == 2)
+        #expect(secondTicks.first?.windowChanged == true)
     }
 }
 
 private extension CountdownTests {
     func makeSUT(
-        startingDate: Date = Date(timeIntervalSince1970: 0),
-        interval: TimeInterval = 1,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> Countdown {
-        let dateProvider = DateProvider(startingDate: startingDate, interval: interval)
-        let sut = Countdown(timeStep: 30, interval: 0, dateProvider: dateProvider.incrementDate)
-        trackForMemoryLeaks(sut, file: file, line: line)
-        return sut
-    }
-    
-    func getFirstEvents(_ eventNumber: Int, from sut: Countdown, after action: () -> Void) -> [Countdown.Event] {
-        var countdowns = [Countdown.Event]()
-        let exp = expectation(description: #function)
-        
-        sut.publisher
-            .map{
-                $0.mapValue({ $0.rounded(.up) })
-            }
-            .sink { c in
-                countdowns.append(c)
-                if countdowns.count == eventNumber {
-                    exp.fulfill()
-                }
-            }
-            .store(in: &cancellables)
-        
-        action()
-        wait(for: [exp])
-        
-        return countdowns
+        timeStep: UInt = 30,
+        startingAt secondsSinceEpoch: TimeInterval = 0,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) -> (sut: Countdown, clock: TestClock<Duration>, date: DateBox) {
+        let clock = TestClock()
+        let dateBox = DateBox(start: Date(timeIntervalSince1970: secondsSinceEpoch))
+        let sut = Countdown(timeStep: timeStep, clock: clock, dateProvider: { dateBox.next() })
+        trackForMemoryLeaks(sut, sourceLocation: sourceLocation)
+        return (sut, clock, dateBox)
     }
 }

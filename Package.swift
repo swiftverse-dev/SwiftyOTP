@@ -1,27 +1,38 @@
-// swift-tools-version: 5.4
-// The swift-tools-version declares the minimum version of Swift required to build this package.
+// swift-tools-version: 6.2
 
 import PackageDescription
 
+let upcomingFeatures: [SwiftSetting] = [
+    .enableUpcomingFeature("StrictConcurrency"),
+]
+
 let package = Package(
     name: "SwiftyOTP",
-    platforms: [
-        .iOS(.v13),
-        .macOS(.v10_15)
-    ],
+    platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(name: "SwiftyOTP", targets: ["SwiftyOTP"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/norio-nomura/Base32.git", from: "0.9.0")
+        .package(url: "https://github.com/norio-nomura/Base32.git", exact: "0.9.0"),
+        .package(url: "https://github.com/pointfreeco/swift-clocks.git", exact: "1.0.6")
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
-        .target(name: "SwiftyOTP", dependencies: ["Base32"]),
+        .target(
+            name: "SwiftyOTP",
+            dependencies: [
+                "Base32",
+                .product(name: "Clocks", package: "swift-clocks"),
+            ],
+            swiftSettings: upcomingFeatures
+        ),
         .testTarget(
             name: "SwiftyOTPTests",
-            dependencies: ["SwiftyOTP"]),
-    ]
+            dependencies: [
+                "SwiftyOTP",
+                .product(name: "Clocks", package: "swift-clocks"),
+            ],
+            swiftSettings: upcomingFeatures
+        ),
+    ],
+    swiftLanguageModes: [.v6]
 )

@@ -9,7 +9,7 @@ import Foundation
 import Base32
 
 /// Represents different types of secret seeds used for OTP generation.
-public enum Seed {
+public enum Seed: Sendable {
     /// A secret seed provided as a Base64-encoded string.
     case base64(String)
     
