@@ -13,7 +13,7 @@ public struct HOTPGenerator: Sendable {
     /// The secret seed data used for generating OTPs.
     public let seed: Data
     
-    /// The number of digits in the generated OTP.
+    /// The number of digits in the generated OTP, always within `6...8`.
     public let digits: Int
     
     /// The hashing algorithm used for OTP generation.
@@ -23,13 +23,14 @@ public struct HOTPGenerator: Sendable {
     /// Initializes an HOTP generator with the provided seed, number of digits, and optional algorithm.
     ///
     /// - Parameters:
-    ///   - seed: The secret seed data used for generating OTPs.
+    ///   - seed: The secret, in one of the encodings described by `Seed`.
     ///   - digits: The number of digits in the generated OTP. Must be within the range (6...8)
     ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
-    /// - Throws:
-    ///   - `Error.digitsNumberOutOfBounds`: If the `digits` parameter is not within the valid range.
-    ///   - `Error.invalidHex`: If the `seed` is not in correct hex representation
-    ///   - `Error.invalidEncoding`: If the `seed` is not in correct base32 or base64 representation
+    /// - Throws: An error if `digits` falls outside `6...8`, or if `seed` cannot be
+    ///   decoded from its declared encoding (hex, base32 or base64).
+    ///
+    ///   The concrete error types are internal to the package and carry only a
+    ///   human-readable description, so catch them as `Error` rather than by type.
     public init(seed: Seed, digits: Int = 6, algorithm: HashingAlgorithm = .sha1) throws {
         try OTPDigitsChecker.check(digits)
         self.seed = try seed.data()
@@ -40,7 +41,7 @@ public struct HOTPGenerator: Sendable {
     /// Generates an OTP at the specified step counter value.
     ///
     /// - Parameter stepCounter: The step counter value to use for OTP generation.
-    /// - Returns: The generated OTP as a string.
+    /// - Returns: The generated OTP, left-padded with zeroes to exactly `digits` characters.
     func otp(at stepCounter: UInt64) -> String {
         let message = stepCounter.bigEndian.data
         let hmac = algorithm.hmac(for: message, using: seed)

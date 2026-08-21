@@ -11,24 +11,20 @@ import Foundation
 
  A Time-Based One-Time Password (TOTP) is a short-lived, one-time authentication code that is typically used for two-factor authentication (2FA). TOTPs are generated based on a combination of a secret key and the current time.
 
- Conforming types to this protocol must implement the method to generate TOTPs for a given time interval since January 1, 1970, as well as provide information about the time step used for generating OTPs.
+ Conforming types implement a single requirement: producing the OTP for a given `Date`. The timestamp-based overloads are provided by the protocol extension.
 
- Usage:
- - Conform to this protocol to implement TOTP generation logic.
- - Use the conforming type to generate TOTPs as needed.
+ `TOTPGenerator` already conforms; conform your own type when you need a custom or stubbed OTP source, for example to drive `OTPTimer` in tests.
 
  Example:
  ```swift
  struct MyTOTPProvider: TOTPProvider {
-
-    func otp(at: Date) -> TOTP {
-        // Implement TOTP generation logic here
-        // This method should generate and return a TOTP as a string for the given ``Date``.
-        // The TOTP should be short-lived and unique for each time interval.
-        // Typically, it involves cryptographic operations using a secret key.
-        // Return the generated TOTP as a string.
-    }
+     func otp(at date: Date) -> TOTP {
+         // Derive the window from `date` and return the code for it,
+         // typically an HMAC over the window index using a secret key.
+         "123456"
+     }
  }
+ ```
 */
 public protocol TOTPProvider: Sendable {
     /// The type alias for a One-Time Password (OTP), typically represented as a string.
@@ -45,12 +41,18 @@ public protocol TOTPProvider: Sendable {
 }
 
 public extension TOTPProvider {
-    /// The One-Time Password (OTP) for the provided Unix Timestamp.
+    /// The One-Time Password (OTP) for the provided Unix timestamp.
+    ///
+    /// - Parameter timestamp: A `UnixTimestamp` in seconds or milliseconds.
+    /// - Returns: The OTP for the window containing that instant.
     func otp(unixTimestamp timestamp: UnixTimestamp) -> TOTP {
         otp(at: Date(timeIntervalSince1970: timestamp.timestampInSeconds))
     }
 
-    /// The One-Time Password (OTP) for the provided TimeInterval
+    /// The One-Time Password (OTP) for the provided time interval.
+    ///
+    /// - Parameter intervalSince1970: Seconds since the Unix epoch.
+    /// - Returns: The OTP for the window containing that instant.
     func otp(intervalSince1970: TimeInterval) -> TOTP {
         otp(at: Date(timeIntervalSince1970: intervalSince1970))
     }

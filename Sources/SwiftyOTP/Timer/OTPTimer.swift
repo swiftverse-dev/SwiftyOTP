@@ -24,6 +24,10 @@ public final class OTPTimer {
 
     /// Seconds remaining in the current OTP window from the most recent tick.
     /// Zero before the first tick is consumed.
+    ///
+    /// Derived from `Tick.value`, i.e. from the date provider the countdown was
+    /// built with - not from its clock. Under a `TestClock` with the default
+    /// date provider this still reflects wall time.
     public private(set) var countdown: TimeInterval = 0
 
     @ObservationIgnored private let countdownSource: Countdown
@@ -53,6 +57,11 @@ public final class OTPTimer {
     }
 
     /// Starts the consumer task if not already running. Idempotent.
+    ///
+    /// Main-actor isolated, like the rest of the type. Calling `start()` after
+    /// `stop()` opens a *new* subscription on the countdown, which restarts its
+    /// producer; the first tick of that subscription reports a window change and
+    /// therefore always refreshes `currentOTP`.
     public func start() {
         guard consumerTask == nil else { return }
         let stream = countdownSource.ticks
@@ -66,7 +75,9 @@ public final class OTPTimer {
     }
 
     /// Cancels the consumer task if any. After calling, observable state
-    /// stops being updated. Idempotent.
+    /// stops being updated and the countdown subscription is dropped, which
+    /// stops the countdown's producer if this was its last subscriber.
+    /// Main-actor isolated. Idempotent.
     public func stop() {
         consumerTask?.cancel()
         consumerTask = nil

@@ -15,8 +15,13 @@
 
 /*
  *    Data utilities from CryptoSwift. CryptoSwift has been dropped as a dependency,
- *    but these are preserved to maintain API compatability with earlier versions
- *     of SwiftOTP.
+ *    but these are preserved to maintain API compatibility with earlier versions
+ *    of SwiftOTP.
+ *
+ *    They are `public` only for that historical reason: they widen `Data` and
+ *    `[UInt8]` for every importer of SwiftyOTP, and `toHexString()` has no
+ *    caller left inside the package. Treat them as deprecated surface to be
+ *    made internal once the compatibility window closes.
  */
 
 import Foundation
@@ -27,6 +32,12 @@ extension Data {
         return Array(self)
     }
 
+    /// Decodes `hexString` into `Data`.
+    ///
+    /// - Parameter hexString: Hex digits, optionally prefixed with `0x`. Case
+    ///   insensitive. An odd number of digits is accepted: the trailing nibble
+    ///   becomes a whole byte.
+    /// - Returns: `nil` if any character is not a hex digit.
     public init?(hexString: String) {
         guard let bytes = Array<UInt8>(hexString: hexString) else { return nil }
         self.init(bytes)
@@ -40,6 +51,12 @@ extension Array where Element == UInt8 {
       self.reserveCapacity(reserveCapacity)
     }
 
+    /// Decodes `hexString` into a byte array.
+    ///
+    /// - Parameter hexString: Hex digits, optionally prefixed with `0x`. Case
+    ///   insensitive. An odd number of digits is accepted: the trailing nibble
+    ///   becomes a whole byte.
+    /// - Returns: `nil` if any character is not a hex digit.
     public init?(hexString: String) {
         self.init(reserveCapacity: hexString.unicodeScalars.lazy.underestimatedCount)
         var buffer: UInt8?
@@ -82,6 +99,7 @@ extension Array where Element == UInt8 {
         }
       }
 
+    /// The bytes as a lowercase hex string, two characters per byte, unprefixed.
     public func toHexString() -> String {
         `lazy`.reduce(into: "") {
           var s = String($1, radix: 16)
