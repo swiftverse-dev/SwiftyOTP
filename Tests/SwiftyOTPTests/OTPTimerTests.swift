@@ -144,7 +144,7 @@ private extension OTPTimerTests {
 
 /// Sendable provider that returns "0", "1", "2", … on successive calls.
 /// File-private to this suite.
-fileprivate final class OTPProviderSpy: TOTPProvider, @unchecked Sendable {
+fileprivate final class OTPProviderSpy: TOTPProvider {
     private let lock = OSAllocatedUnfairLock(initialState: 0)
 
     func otp(at _: Date) -> TOTP {

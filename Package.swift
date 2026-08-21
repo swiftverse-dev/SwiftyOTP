@@ -2,10 +2,6 @@
 
 import PackageDescription
 
-let upcomingFeatures: [SwiftSetting] = [
-    .enableUpcomingFeature("StrictConcurrency"),
-]
-
 let package = Package(
     name: "SwiftyOTP",
     platforms: [.iOS(.v17), .macOS(.v14)],
@@ -22,16 +18,14 @@ let package = Package(
             dependencies: [
                 "Base32",
                 .product(name: "Clocks", package: "swift-clocks"),
-            ],
-            swiftSettings: upcomingFeatures
+            ]
         ),
         .testTarget(
             name: "SwiftyOTPTests",
             dependencies: [
                 "SwiftyOTP",
                 .product(name: "Clocks", package: "swift-clocks"),
-            ],
-            swiftSettings: upcomingFeatures
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]
