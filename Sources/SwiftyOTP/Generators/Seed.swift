@@ -54,9 +54,18 @@ public enum Seed: Sendable {
             return data
         }
     }
+}
 
+private extension Seed {
+    // Uppercases only ASCII letters (full Unicode mapping would turn `ß` into `SS`),
+    // drops whitespace and hyphens anywhere and `=` only as trailing padding.
     static func normalizedBase32(_ string: String) -> String {
-        let stripped = string.uppercased().filter { !" -=\t\n".contains($0) }
+        var stripped = String(String.UnicodeScalarView(string.unicodeScalars.compactMap { scalar -> Unicode.Scalar? in
+            if scalar.properties.isWhitespace || scalar == "-" { return nil }
+            if ("a"..."z").contains(scalar) { return Unicode.Scalar(scalar.value - 32) }
+            return scalar
+        }))
+        while stripped.hasSuffix("=") { stripped.removeLast() }
         let padding = (8 - stripped.count % 8) % 8
         return stripped + String(repeating: "=", count: padding)
     }

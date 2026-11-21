@@ -61,6 +61,7 @@ final class SeedTests: LeakTrackingTestCase {
         "GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ",
         "GEZD-GNBV-GY3T-QOJQ-GEZD-GNBV-GY3T-QOJQ",
         "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ====",
+        "GEZD GNBV GY3T QOJQ\r\nGEZD\u{00A0}GNBV GY3T QOJQ",
     ])
     func `data() - base32 ignores case, spaces, hyphens and padding`(base32: String) throws {
         let expected = try Seed.data(self.dataSeed).data()
@@ -75,5 +76,10 @@ final class SeedTests: LeakTrackingTestCase {
     @Test
     func `data() - throws when base32 is empty after normalization`() {
         #expect(throws: (any Error).self) { try Seed.base32(" - ").data() }
+    }
+
+    @Test(arguments: ["ßAAAAAA", "MZ=XW6"])
+    func `data() - throws when base32 has non-ASCII letters or padding inside`(base32: String) {
+        #expect(throws: (any Error).self) { try Seed.base32(base32).data() }
     }
 }
