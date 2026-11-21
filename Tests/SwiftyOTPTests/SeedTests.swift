@@ -55,4 +55,25 @@ final class SeedTests: LeakTrackingTestCase {
         let sut = Seed.base64(wrongBase64)
         #expect(throws: (any Error).self) { try sut.data() }
     }
+
+    @Test(arguments: [
+        "gezdgnbvgy3tqojqgezdgnbvgy3tqojq",
+        "GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ",
+        "GEZD-GNBV-GY3T-QOJQ-GEZD-GNBV-GY3T-QOJQ",
+        "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ====",
+    ])
+    func `data() - base32 ignores case, spaces, hyphens and padding`(base32: String) throws {
+        let expected = try Seed.data(self.dataSeed).data()
+        #expect(try Seed.base32(base32).data() == expected)
+    }
+
+    @Test
+    func `data() - base32 decodes unpadded input whose length is not a multiple of 8`() throws {
+        #expect(try Seed.base32("MZXW6").data() == Data("foo".utf8))
+    }
+
+    @Test
+    func `data() - throws when base32 is empty after normalization`() {
+        #expect(throws: (any Error).self) { try Seed.base32(" - ").data() }
+    }
 }
