@@ -14,6 +14,9 @@ public enum Seed: Sendable {
     case base64(String)
     
     /// A secret seed provided as a Base32-encoded string.
+    ///
+    /// Decoding is lenient with the way issuers print secrets: spaces, hyphens,
+    /// lowercase letters and `=` padding are accepted.
     case base32(String)
     
     /// A secret seed provided as a hexadecimal string.
@@ -33,7 +36,7 @@ public enum Seed: Sendable {
             return data
             
         case .base32(let base32):
-            guard let data = base32.base32DecodedData else {
+            guard let data = Self.normalizedBase32(base32).base32DecodedData, !data.isEmpty else {
                 throw SeedDecodingError(message: "Invalid base32 representation: \(base32)")
             }
             return data
@@ -50,5 +53,20 @@ public enum Seed: Sendable {
             }
             return data
         }
+    }
+}
+
+private extension Seed {
+    // Uppercases only ASCII letters (full Unicode mapping would turn `ß` into `SS`),
+    // drops whitespace and hyphens anywhere and `=` only as trailing padding.
+    static func normalizedBase32(_ string: String) -> String {
+        var stripped = String(String.UnicodeScalarView(string.unicodeScalars.compactMap { scalar -> Unicode.Scalar? in
+            if scalar.properties.isWhitespace || scalar == "-" { return nil }
+            if ("a"..."z").contains(scalar) { return Unicode.Scalar(scalar.value - 32) }
+            return scalar
+        }))
+        while stripped.hasSuffix("=") { stripped.removeLast() }
+        let padding = (8 - stripped.count % 8) % 8
+        return stripped + String(repeating: "=", count: padding)
     }
 }

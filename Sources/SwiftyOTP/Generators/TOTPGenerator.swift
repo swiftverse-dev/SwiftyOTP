@@ -33,12 +33,13 @@ public struct TOTPGenerator: Sendable {
     ///   - timeStep: The time step duration in seconds. The default is 30 seconds.
     ///   - algorithm: The hashing algorithm to use for OTP generation. The default is SHA-1.
     ///
-    /// - Throws: An error if `digits` falls outside `6...8`, or if `seed` cannot be
-    ///   decoded from its declared encoding (hex, base32 or base64).
+    /// - Throws: An error if `digits` falls outside `6...8`, if `timeStep` is `0`,
+    ///   or if `seed` cannot be decoded from its declared encoding (hex, base32 or base64).
     ///
     ///   The concrete error types are internal to the package and carry only a
     ///   human-readable description, so catch them as `Error` rather than by type.
     public init(seed: Seed, digits: Int = 6, timeStep: UInt = 30, algorithm: HashingAlgorithm = .sha1) throws {
+        guard timeStep > 0 else { throw ZeroTimeStep() }
         self.hotp = try HOTPGenerator(seed: seed, digits: digits, algorithm: algorithm)
         self.timeStep = timeStep
     }
@@ -63,6 +64,10 @@ public struct TOTPGenerator: Sendable {
 }
 
 // MARK: Helpers
+private struct ZeroTimeStep: Error {
+    var description: String { "Expected a time step greater than 0 seconds" }
+}
+
 private extension TOTPGenerator {
     func stepCounter(at date: Date) -> UInt64 {
         (date.timeIntervalSince1970.floor / timeStep.asDouble).floor.asUInt

@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Pure Swift Package, no UI layer. Implements RFC 4226 (HOTP) and RFC 6238 (TOTP). Public API surface: `HOTPGenerator`, `TOTPGenerator`, `Seed`, `HashingAlgorithm`, `OTPTimer`, `Countdown`, `Tick`, `TOTPProvider`, `UnixTimestamp`. Targets iOS 17+ and macOS 14+ (driven by Observation framework requirements).
+Pure Swift Package, no UI layer. Implements RFC 4226 (HOTP) and RFC 6238 (TOTP). Public API surface: `HOTPGenerator`, `TOTPGenerator`, `Seed`, `HashingAlgorithm`, `OTPAuthURI`, `OTPTimer`, `Countdown`, `Tick`, `TOTPProvider`, `UnixTimestamp`. Targets iOS 17+ and macOS 14+ (driven by Observation framework requirements).
 
 This file describes the conventions the project is migrating *toward*. Code on disk that contradicts a rule (XCTest, `Foundation.Timer`) is legacy awaiting migration, not a counter-example.
 
@@ -10,9 +10,10 @@ Combine is fully gone from `Sources/` and `Tests/` — the old `.publisher` API 
 
 ## Architecture
 
-Three folders under `Sources/SwiftyOTP/`:
+Four folders under `Sources/SwiftyOTP/`:
 
 - **`Generators/`** — Stateless value types: `HOTPGenerator`, `TOTPGenerator`, `Seed`, `HashingAlgorithm`, `OTPDigitsChecker`.
+- **`Provisioning/`** — `OTPAuthURI`, the `otpauth://` parser and generator.
 - **`Timer/`** — `OTPTimer` (`@MainActor @Observable` model), `Countdown`/`Tick` (driven by `swift-clocks`), `TOTPProvider` protocol, `UnixTimestamp`.
 - **`Helpers/`** — Internal extensions on `Data`, `UInt`, etc. Not part of the public surface.
 
@@ -23,9 +24,9 @@ Three folders under `Sources/SwiftyOTP/`:
 - Observability: `OTPTimer` is `@Observable` (Observation framework). Never `ObservableObject`.
 - No Combine, anywhere. It has been removed; don't reintroduce it.
 - Value types by default. Reference types only when identity or lifecycle matters (`OTPTimer`).
-- Throwing inits for input validation: `Seed` decoding, digit bounds (`6...8`).
+- Throwing inits for input validation: `Seed` decoding, digit bounds (`6...8`), non-zero `timeStep`.
 - Public API gets doc comments (`///` or `/** */`). Internal helpers stay terse.
-- Doc comments must name only symbols that exist. Thrown errors in this package are internal types with no public cases — document `- Throws` by condition ("if `digits` falls outside `6...8`"), never by a made-up error-case name.
+- Doc comments must name only symbols that exist. Thrown errors in this package are internal types with no public cases, except `OTPAuthURI.ParseError`, which is public so apps can explain a rejected QR code. Elsewhere, document `- Throws` by condition ("if `digits` falls outside `6...8`"), never by a made-up error-case name.
 - `Sources/SwiftyOTP/Helpers/Data+Utils.swift` exposes `public` extensions on `Data`/`[UInt8]` for backwards compatibility only. Don't add more; prefer internal helpers.
 - Group helpers in `private extension` of the owning type.
 
