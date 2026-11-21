@@ -145,9 +145,10 @@ public struct OTPAuthURI: Sendable, Equatable {
     public var url: URL {
         var components = URLComponents()
         components.scheme = "otpauth"
-        let label = [issuer, accountName]
-            .compactMap { $0.map(Self.encode) }
-            .joined(separator: ":")
+        // Without an issuer, an empty prefix keeps a colon in the account name
+        // from being read back as the issuer separator.
+        let label = "\(issuer.map(Self.encode) ?? ""):\(Self.encode(accountName))"
+            .drop { $0 == ":" && !accountName.contains(":") }
         var items: [(String, String)] = [
             ("secret", secret.base32EncodedString.filter { $0 != "=" }),
         ]
@@ -161,7 +162,7 @@ public struct OTPAuthURI: Sendable, Equatable {
             components.host = "hotp"
             items.append(("counter", String(counter)))
         }
-        components.percentEncodedPath = "/" + label
+        components.percentEncodedPath = "/" + String(label)
         components.percentEncodedQuery = items
             .map { "\($0)=\(Self.encode($1))" }
             .joined(separator: "&")
@@ -183,8 +184,9 @@ private extension OTPAuthURI {
 
     static func firstValues(of items: [URLQueryItem]) -> [String: String] {
         items.reduce(into: [:]) { result, item in
-            guard result[item.name.lowercased()] == nil, let value = item.value else { return }
-            result[item.name.lowercased()] = value
+            // A bare `&period` counts as an empty value, so it is rejected, not defaulted.
+            guard result[item.name.lowercased()] == nil else { return }
+            result[item.name.lowercased()] = item.value ?? ""
         }
     }
 }

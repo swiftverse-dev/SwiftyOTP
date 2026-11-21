@@ -10,13 +10,13 @@ import SwiftyOTP
 @Suite("OTPAuthURI")
 struct OTPAuthURITests {
 
-    private func parse(_ string: String) throws(OTPAuthURI.ParseError) -> OTPAuthURI {
+    private func makeSUT(_ string: String) throws(OTPAuthURI.ParseError) -> OTPAuthURI {
         try OTPAuthURI(parsing: string)
     }
 
     @Test
     func `init(parsing:) - reads a full TOTP URI`() throws {
-        let sut = try parse("otpauth://totp/ACME%20Co:john.doe@email.com?secret=HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ&issuer=ACME%20Co&algorithm=SHA256&digits=8&period=60")
+        let sut = try makeSUT("otpauth://totp/ACME%20Co:john.doe@email.com?secret=HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ&issuer=ACME%20Co&algorithm=SHA256&digits=8&period=60")
 
         #expect(sut.kind == .totp(period: 60))
         #expect(sut.issuer == "ACME Co")
@@ -28,7 +28,7 @@ struct OTPAuthURITests {
 
     @Test
     func `init(parsing:) - applies defaults when optional parameters are absent`() throws {
-        let sut = try parse("otpauth://totp/alice?secret=JBSWY3DPEHPK3PXP")
+        let sut = try makeSUT("otpauth://totp/alice?secret=JBSWY3DPEHPK3PXP")
 
         #expect(sut.kind == .totp(period: 30))
         #expect(sut.issuer == nil)
@@ -39,20 +39,20 @@ struct OTPAuthURITests {
 
     @Test
     func `init(parsing:) - takes the issuer from the label prefix when the parameter is absent`() throws {
-        let sut = try parse("otpauth://totp/Example:alice@google.com?secret=JBSWY3DPEHPK3PXP")
+        let sut = try makeSUT("otpauth://totp/Example:alice@google.com?secret=JBSWY3DPEHPK3PXP")
         #expect(sut.issuer == "Example")
         #expect(sut.accountName == "alice@google.com")
     }
 
     @Test
     func `init(parsing:) - prefers the issuer parameter over the label prefix`() throws {
-        let sut = try parse("otpauth://totp/Old:alice?secret=JBSWY3DPEHPK3PXP&issuer=New")
+        let sut = try makeSUT("otpauth://totp/Old:alice?secret=JBSWY3DPEHPK3PXP&issuer=New")
         #expect(sut.issuer == "New")
     }
 
     @Test
     func `init(parsing:) - accepts an encoded separator, case-insensitive scheme, type and algorithm`() throws {
-        let sut = try parse("OTPAUTH://TOTP/Example%3Aalice?secret=jbswy3dpehpk3pxp&algorithm=sha512")
+        let sut = try makeSUT("OTPAUTH://TOTP/Example%3Aalice?secret=jbswy3dpehpk3pxp&algorithm=sha512")
         #expect(sut.issuer == "Example")
         #expect(sut.accountName == "alice")
         #expect(sut.algorithm == .sha512)
@@ -60,7 +60,7 @@ struct OTPAuthURITests {
 
     @Test
     func `init(parsing:) - reads an HOTP URI with its counter`() throws {
-        let sut = try parse("otpauth://hotp/alice?secret=JBSWY3DPEHPK3PXP&counter=42")
+        let sut = try makeSUT("otpauth://hotp/alice?secret=JBSWY3DPEHPK3PXP&counter=42")
         #expect(sut.kind == .hotp(counter: 42))
     }
 
@@ -78,18 +78,20 @@ struct OTPAuthURITests {
         ("otpauth://totp/alice?secret=JBSWY3DPEHPK3PXP&period=-30", .invalidPeriod("-30")),
         ("otpauth://hotp/alice?secret=JBSWY3DPEHPK3PXP", .missingCounter),
         ("otpauth://hotp/alice?secret=JBSWY3DPEHPK3PXP&counter=x", .invalidCounter("x")),
+        ("otpauth://totp/alice?secret=JBSWY3DPEHPK3PXP&period", .invalidPeriod("")),
     ])
     func `init(parsing:) - throws the precise error`(uri: String, expected: OTPAuthURI.ParseError) {
-        #expect(throws: expected) { try self.parse(uri) }
+        #expect(throws: expected) { try self.makeSUT(uri) }
     }
 
     @Test(arguments: [
         OTPAuthURI(kind: .totp(period: 30), secret: Data("Hello!".utf8), issuer: "ACME & Co: Ltd", accountName: "john+doe@email.com"),
         OTPAuthURI(kind: .totp(period: 60), secret: Data([0xDE, 0xAD, 0xBE, 0xEF, 0x01]), accountName: "Ünïcode user", algorithm: .sha512, digits: 8),
+        OTPAuthURI(kind: .totp(period: 30), secret: Data("Hello!".utf8), accountName: "team:alice"),
         OTPAuthURI(kind: .hotp(counter: 7), secret: Data("12345678901234567890".utf8), issuer: "Bank", accountName: "alice", algorithm: .sha256, digits: 7),
     ])
     func `url - parses back to the same value`(sut: OTPAuthURI) throws {
-        #expect(try parse(sut.url.absoluteString) == sut)
+        #expect(try makeSUT(sut.url.absoluteString) == sut)
     }
 
     @Test

@@ -44,7 +44,12 @@ hotp.otp(at: 42)           // code for counter 42
 let uri = try OTPAuthURI(parsing: "otpauth://totp/ACME:alice?secret=JBSWY3DPEHPK3PXP&issuer=ACME")
 uri.issuer                 // "ACME"
 uri.kind                   // .totp(period: 30)
-let totp = try TOTPGenerator(seed: .data(uri.secret), digits: uri.digits, algorithm: uri.algorithm)
+switch uri.kind {
+case .totp(let period):
+    let totp = try TOTPGenerator(seed: .data(uri.secret), digits: uri.digits, timeStep: period, algorithm: uri.algorithm)
+case .hotp(let counter):
+    let code = try HOTPGenerator(seed: .data(uri.secret), digits: uri.digits, algorithm: uri.algorithm).otp(at: counter)
+}
 uri.url                    // back to an otpauth:// URL, every parameter explicit
 ```
 
