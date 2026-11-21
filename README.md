@@ -31,11 +31,24 @@ totp.otp(at: someDate)     // code for an arbitrary date
 
 ### HOTP
 
-`HOTPGenerator` backs `TOTPGenerator`; counter-based codes are produced internally from the time step. Construct it directly when you need the shared configuration (`seed`, `digits`, `algorithm`).
+`HOTPGenerator` produces counter-based codes and also backs `TOTPGenerator`.
 
 ```swift
 let hotp = try HOTPGenerator(seed: .hex("3132333435363738393031323334353637383930"), digits: 8, algorithm: .sha256)
+hotp.otp(at: 42)           // code for counter 42
 ```
+
+### `otpauth://` URIs
+
+```swift
+let uri = try OTPAuthURI(parsing: "otpauth://totp/ACME:alice?secret=JBSWY3DPEHPK3PXP&issuer=ACME")
+uri.issuer                 // "ACME"
+uri.kind                   // .totp(period: 30)
+let totp = try TOTPGenerator(seed: .data(uri.secret), digits: uri.digits, algorithm: uri.algorithm)
+uri.url                    // back to an otpauth:// URL, every parameter explicit
+```
+
+Parsing throws an `OTPAuthURI.ParseError` naming the problem: missing or non-base32 secret, digits other than 6/7/8, an algorithm other than SHA1/SHA256/SHA512, a type other than `totp`/`hotp`, a zero period, a missing HOTP counter.
 
 ### Live timer in SwiftUI
 
@@ -60,12 +73,18 @@ struct CodeView: View {
 
 | Type | Purpose |
 |---|---|
-| `Seed` | Secret input: `.base32`, `.base64`, `.hex`, `.data`. Decoding is validated at init and throws on malformed input. |
-| `HashingAlgorithm` | `.sha1` (default), `.sha256`, `.sha512`. |
-| `HOTPGenerator` | RFC 4226 counter-based generator. Exposes `seed`, `digits`, `algorithm`. |
+| `Seed` | Secret input: `.base32`, `.base64`, `.hex`, `.data`. Decoding is validated at init and throws on malformed input. Base32 ignores case, spaces, hyphens and `=` padding. |
+| `HashingAlgorithm` | `.sha1` (default), `.sha256`, `.sha512`. `Codable` and `CaseIterable`; the raw value is the `otpauth` name (`"SHA1"`, …). |
+| `HOTPGenerator` | RFC 4226 counter-based generator. Exposes `seed`, `digits`, `algorithm`, `otp(at:)`. |
 | `TOTPGenerator` | RFC 6238 time-based generator over `HOTPGenerator`. Adds `timeStep` (default 30s), `currentOTP`, `otp(at:)`. |
 
-Both generators throw if `digits` falls outside `6...8` or if the seed cannot be decoded.
+Both generators throw if `digits` falls outside `6...8` or if the seed cannot be decoded; `TOTPGenerator` also throws on a `timeStep` of `0`.
+
+### Provisioning
+
+| Type | Purpose |
+|---|---|
+| `OTPAuthURI` | Parses (`init(parsing:)`) and generates (`url`) `otpauth://` Key URIs. `kind` is `.totp(period:)` or `.hotp(counter:)`. Throws `OTPAuthURI.ParseError`. |
 
 ### Timer
 
