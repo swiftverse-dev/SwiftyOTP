@@ -33,6 +33,13 @@ final class TOTPGeneratorTests: LeakTrackingTestCase {
     }
 
     @Test
+    func `init - throws when timeStep is zero`() {
+        #expect(throws: (any Error).self) {
+            _ = try self.makeSUT(seed: self.seedSha1, timeStep: 0)
+        }
+    }
+
+    @Test
     func `init - throws when digits is below the valid range`() {
         #expect(throws: (any Error).self) {
             _ = try self.makeSUT(seed: self.seedSha1, digits: 5)
