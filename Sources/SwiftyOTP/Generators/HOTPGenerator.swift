@@ -42,7 +42,7 @@ public struct HOTPGenerator: Sendable {
     ///
     /// - Parameter stepCounter: The step counter value to use for OTP generation.
     /// - Returns: The generated OTP, left-padded with zeroes to exactly `digits` characters.
-    func otp(at stepCounter: UInt64) -> String {
+    public func otp(at stepCounter: UInt64) -> String {
         let message = stepCounter.bigEndian.data
         let hmac = algorithm.hmac(for: message, using: seed)
         
